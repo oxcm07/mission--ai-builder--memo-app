@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -36,6 +37,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
@@ -88,7 +90,8 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "Memo",
         state = mainWindowState,
-        undecorated = true
+        undecorated = true,
+        transparent = true
     ) {
         window.minimumSize = Dimension(800, 500)
         val dragState = remember { WindowDragState() }
@@ -103,7 +106,11 @@ fun main() = application {
             }
         }
 
-        Column(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(10.dp))
+        ) {
             WindowsTitleBar(
                 title = "Memo",
                 darkMode = darkMode,
@@ -152,7 +159,8 @@ fun main() = application {
                     title = note.displayTitle,
                     state = rememberWindowState(size = DpSize(320.dp, 380.dp)),
                     alwaysOnTop = true,
-                    undecorated = true
+                    undecorated = true,
+                    transparent = true
                 ) {
                     val stickyDragState = remember { WindowDragState() }
 
@@ -171,7 +179,11 @@ fun main() = application {
                             )
                         }
                     ) {
-                        Column(Modifier.fillMaxSize()) {
+                        Column(
+                            Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(10.dp))
+                        ) {
                             WindowsTitleBar(
                                 title = note.displayTitle,
                                 darkMode = darkMode,
