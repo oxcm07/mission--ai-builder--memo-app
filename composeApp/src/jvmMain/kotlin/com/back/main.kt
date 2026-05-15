@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
@@ -74,7 +75,12 @@ fun main() = application {
     val viewModel = remember(repository) { NotesViewModel(repository, scope) }
     val state by viewModel.state.collectAsState()
     val mainWindowState = rememberWindowState(size = DpSize(1100.dp, 720.dp))
-    var darkMode by remember { mutableStateOf(false) }
+    var themeMode by remember { mutableStateOf(ThemeMode.System) }
+    val darkMode = when (themeMode) {
+        ThemeMode.System -> isSystemInDarkTheme()
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
+    }
     var editorFontSizeSp by remember { mutableStateOf(16) }
     val availableFontNames = remember { availableSystemFontNames() }
     var selectedFontName by remember { mutableStateOf(defaultMemoFontName(availableFontNames)) }
@@ -141,7 +147,8 @@ fun main() = application {
                 onDecreaseFontSize = { editorFontSizeSp = (editorFontSizeSp - 1).coerceAtLeast(12) },
                 onIncreaseFontSize = { editorFontSizeSp = (editorFontSizeSp + 1).coerceAtMost(28) },
                 onSelectFont = { selectedFontName = it },
-                onToggleDarkMode = { darkMode = !darkMode },
+                themeModeLabel = themeMode.label,
+                onCycleThemeMode = { themeMode = themeMode.next() },
                 onOpenStickyNote = { noteId ->
                     stickyNoteIds = (stickyNoteIds + noteId).distinct()
                 },
@@ -217,6 +224,19 @@ fun main() = application {
             }
         }
     }
+}
+
+private enum class ThemeMode(val label: String) {
+    System("시스템"),
+    Light("라이트"),
+    Dark("다크");
+
+    fun next(): ThemeMode =
+        when (this) {
+            System -> Light
+            Light -> Dark
+            Dark -> System
+        }
 }
 
 private class WindowDragState {

@@ -74,7 +74,8 @@ fun MainScreen(
     onDecreaseFontSize: () -> Unit,
     onIncreaseFontSize: () -> Unit,
     onSelectFont: (String) -> Unit,
-    onToggleDarkMode: () -> Unit,
+    themeModeLabel: String,
+    onCycleThemeMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
     onOpenDataFolder: () -> Unit,
@@ -154,7 +155,8 @@ fun MainScreen(
                 onDecreaseFontSize = onDecreaseFontSize,
                 onIncreaseFontSize = onIncreaseFontSize,
                 onSelectFont = onSelectFont,
-                onToggleDarkMode = onToggleDarkMode,
+                themeModeLabel = themeModeLabel,
+                onCycleThemeMode = onCycleThemeMode,
                 onCreateNote = onCreateNote,
                 onImportTextFile = onImportTextFile,
                 onOpenDataFolder = onOpenDataFolder,
@@ -256,7 +258,8 @@ private fun Toolbar(
     onDecreaseFontSize: () -> Unit,
     onIncreaseFontSize: () -> Unit,
     onSelectFont: (String) -> Unit,
-    onToggleDarkMode: () -> Unit,
+    themeModeLabel: String,
+    onCycleThemeMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
     onOpenDataFolder: () -> Unit,
@@ -349,8 +352,8 @@ private fun Toolbar(
             onClick = { selectedNote?.let(onRequestDelete) }
         )
         ToolbarButton(
-            text = if (darkMode) "라이트" else "다크",
-            onClick = onToggleDarkMode
+            text = themeModeLabel,
+            onClick = onCycleThemeMode
         )
     }
 }

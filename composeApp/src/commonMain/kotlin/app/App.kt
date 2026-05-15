@@ -28,7 +28,8 @@ fun App(
     onDecreaseFontSize: () -> Unit,
     onIncreaseFontSize: () -> Unit,
     onSelectFont: (String) -> Unit,
-    onToggleDarkMode: () -> Unit,
+    themeModeLabel: String,
+    onCycleThemeMode: () -> Unit,
     onOpenStickyNote: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -68,7 +69,8 @@ fun App(
             onDecreaseFontSize = onDecreaseFontSize,
             onIncreaseFontSize = onIncreaseFontSize,
             onSelectFont = onSelectFont,
-            onToggleDarkMode = onToggleDarkMode,
+            themeModeLabel = themeModeLabel,
+            onCycleThemeMode = onCycleThemeMode,
             onCreateNote = viewModel::createNote,
             onImportTextFile = {
                 pickTextFile()?.let(viewModel::importTextFile)
