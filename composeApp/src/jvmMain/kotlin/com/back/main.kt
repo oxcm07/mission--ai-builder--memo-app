@@ -148,7 +148,10 @@ fun main() = application {
                 onIncreaseFontSize = { editorFontSizeSp = (editorFontSizeSp + 1).coerceAtMost(28) },
                 onSelectFont = { selectedFontName = it },
                 themeModeLabel = themeMode.label,
-                onCycleThemeMode = { themeMode = themeMode.next() },
+                availableThemeModeLabels = ThemeMode.values().map { it.label },
+                onSelectThemeMode = { label ->
+                    themeMode = ThemeMode.values().firstOrNull { it.label == label } ?: themeMode
+                },
                 onOpenStickyNote = { noteId ->
                     stickyNoteIds = (stickyNoteIds + noteId).distinct()
                 },
@@ -229,14 +232,7 @@ fun main() = application {
 private enum class ThemeMode(val label: String) {
     System("시스템"),
     Light("라이트"),
-    Dark("다크");
-
-    fun next(): ThemeMode =
-        when (this) {
-            System -> Light
-            Light -> Dark
-            Dark -> System
-        }
+    Dark("다크")
 }
 
 private class WindowDragState {

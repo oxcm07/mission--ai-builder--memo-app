@@ -78,21 +78,19 @@ fun MainScreen(
     onIncreaseFontSize: () -> Unit,
     onSelectFont: (String) -> Unit,
     themeModeLabel: String,
-    onCycleThemeMode: () -> Unit,
+    availableThemeModeLabels: List<String>,
+    onSelectThemeMode: (String) -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
-    onOpenDataFolder: () -> Unit,
     onSelectNote: (String) -> Unit,
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
     onRequestDeleteFolder: (NoteFolder) -> Unit,
     onConfirmDeleteFolder: () -> Unit,
     onCancelDeleteFolder: () -> Unit,
-    onMoveSelectedNoteToFolder: (String) -> Unit,
     onUpdateTitle: (String) -> Unit,
     onUpdateContent: (String) -> Unit,
     onSearch: (String) -> Unit,
-    onTogglePinned: (String) -> Unit,
     onOpenStickyNote: (String) -> Unit,
     onRequestDelete: (Note) -> Unit,
     onConfirmDelete: () -> Unit,
@@ -154,6 +152,7 @@ fun MainScreen(
             Toolbar(
                 darkMode = darkMode,
                 selectedNote = selectedNote,
+                selectedFolderId = state.selectedFolderId,
                 folders = state.folders,
                 editorFontSizeSp = editorFontSizeSp,
                 selectedFontName = selectedFontName,
@@ -162,14 +161,13 @@ fun MainScreen(
                 onIncreaseFontSize = onIncreaseFontSize,
                 onSelectFont = onSelectFont,
                 themeModeLabel = themeModeLabel,
-                onCycleThemeMode = onCycleThemeMode,
+                availableThemeModeLabels = availableThemeModeLabels,
+                onSelectThemeMode = onSelectThemeMode,
                 onCreateNote = onCreateNote,
                 onImportTextFile = onImportTextFile,
-                onOpenDataFolder = onOpenDataFolder,
-                onMoveSelectedNoteToFolder = onMoveSelectedNoteToFolder,
-                onTogglePinned = onTogglePinned,
                 onOpenStickyNote = onOpenStickyNote,
-                onRequestDelete = onRequestDelete
+                onRequestDelete = onRequestDelete,
+                onRequestDeleteFolder = onRequestDeleteFolder
             )
 
             Row(Modifier.weight(1f)) {
@@ -180,7 +178,6 @@ fun MainScreen(
                     selectedFolderId = state.selectedFolderId,
                     onSelectFolder = onSelectFolder,
                     onCreateFolder = onCreateFolder,
-                    onRequestDeleteFolder = onRequestDeleteFolder,
                     modifier = Modifier
                         .width(folderPaneWidth)
                         .fillMaxHeight()
@@ -282,6 +279,7 @@ private fun PaneResizeHandle(
 private fun Toolbar(
     darkMode: Boolean,
     selectedNote: Note?,
+    selectedFolderId: String?,
     folders: List<NoteFolder>,
     editorFontSizeSp: Int,
     selectedFontName: String,
@@ -290,17 +288,17 @@ private fun Toolbar(
     onIncreaseFontSize: () -> Unit,
     onSelectFont: (String) -> Unit,
     themeModeLabel: String,
-    onCycleThemeMode: () -> Unit,
+    availableThemeModeLabels: List<String>,
+    onSelectThemeMode: (String) -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
-    onOpenDataFolder: () -> Unit,
-    onMoveSelectedNoteToFolder: (String) -> Unit,
-    onTogglePinned: (String) -> Unit,
     onOpenStickyNote: (String) -> Unit,
-    onRequestDelete: (Note) -> Unit
+    onRequestDelete: (Note) -> Unit,
+    onRequestDeleteFolder: (NoteFolder) -> Unit
 ) {
     var fontMenuExpanded by remember { mutableStateOf(false) }
-    var folderMenuExpanded by remember { mutableStateOf(false) }
+    var themeMenuExpanded by remember { mutableStateOf(false) }
+    val selectedFolder = folders.firstOrNull { it.id != DEFAULT_FOLDER_ID && it.id == selectedFolderId }
 
     Row(
         modifier = Modifier
@@ -319,7 +317,6 @@ private fun Toolbar(
         Spacer(Modifier.weight(1f))
         ToolbarButton(text = "새 메모", onClick = onCreateNote)
         ToolbarButton(text = "TXT 가져오기", onClick = onImportTextFile)
-        ToolbarButton(text = "저장 폴더", onClick = onOpenDataFolder)
         Box {
             ToolbarButton(text = selectedFontName, onClick = { fontMenuExpanded = true })
             DropdownMenu(
@@ -351,41 +348,34 @@ private fun Toolbar(
             enabled = selectedNote != null,
             onClick = { selectedNote?.let { onOpenStickyNote(it.id) } }
         )
+        ToolbarButton(
+            text = "삭제",
+            enabled = selectedNote != null || selectedFolder != null,
+            onClick = {
+                if (selectedFolder != null) {
+                    onRequestDeleteFolder(selectedFolder)
+                } else {
+                    selectedNote?.let(onRequestDelete)
+                }
+            }
+        )
         Box {
-            ToolbarButton(
-                text = "이동",
-                enabled = selectedNote != null,
-                onClick = { folderMenuExpanded = true }
-            )
+            ToolbarButton(text = "테마: $themeModeLabel", onClick = { themeMenuExpanded = true })
             DropdownMenu(
-                expanded = folderMenuExpanded,
-                onDismissRequest = { folderMenuExpanded = false }
+                expanded = themeMenuExpanded,
+                onDismissRequest = { themeMenuExpanded = false }
             ) {
-                folders.forEach { folder ->
+                availableThemeModeLabels.forEach { label ->
                     DropdownMenuItem(
-                        text = { Text(folder.name, fontSize = 13.sp) },
+                        text = { Text(label, fontSize = 13.sp) },
                         onClick = {
-                            onMoveSelectedNoteToFolder(folder.id)
-                            folderMenuExpanded = false
+                            onSelectThemeMode(label)
+                            themeMenuExpanded = false
                         }
                     )
                 }
             }
         }
-        ToolbarButton(
-            text = if (selectedNote?.pinned == true) "고정 해제" else "고정",
-            enabled = selectedNote != null,
-            onClick = { selectedNote?.let { onTogglePinned(it.id) } }
-        )
-        ToolbarButton(
-            text = "삭제",
-            enabled = selectedNote != null,
-            onClick = { selectedNote?.let(onRequestDelete) }
-        )
-        ToolbarButton(
-            text = themeModeLabel,
-            onClick = onCycleThemeMode
-        )
     }
 }
 
@@ -412,7 +402,6 @@ private fun FolderPane(
     selectedFolderId: String?,
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
-    onRequestDeleteFolder: (NoteFolder) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var newFolderName by remember { mutableStateOf("") }
@@ -436,9 +425,7 @@ private fun FolderPane(
                 name = folder.name,
                 count = countsByFolder[folder.id] ?: 0,
                 selected = selectedFolderId == folder.id,
-                canDelete = folder.id != DEFAULT_FOLDER_ID,
-                onClick = { onSelectFolder(folder.id) },
-                onDelete = { onRequestDeleteFolder(folder) }
+                onClick = { onSelectFolder(folder.id) }
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -485,9 +472,7 @@ private fun FolderRow(
     name: String,
     count: Int,
     selected: Boolean,
-    canDelete: Boolean = false,
-    onClick: () -> Unit,
-    onDelete: () -> Unit = {}
+    onClick: () -> Unit
 ) {
     Surface(
         color = if (selected) AppleYellow.copy(alpha = 0.22f) else Color.Transparent,
@@ -513,11 +498,6 @@ private fun FolderRow(
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (canDelete) {
-                TextButton(onClick = onDelete) {
-                    Text("삭제", fontSize = 12.sp)
-                }
-            }
         }
     }
 }

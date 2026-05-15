@@ -9,17 +9,23 @@ import java.nio.charset.Charset
 import java.nio.charset.CodingErrorAction
 import kotlin.text.Charsets
 
-actual fun pickTextFile(): ImportedTextFile? {
+actual fun pickTextFiles(): List<ImportedTextFile> {
     val dialog = FileDialog(null as Frame?, "TXT \uD30C\uC77C \uC120\uD0DD", FileDialog.LOAD).apply {
         filenameFilter = java.io.FilenameFilter { _, name ->
             name.endsWith(".txt", ignoreCase = true)
         }
+        isMultipleMode = true
         isVisible = true
     }
 
-    val selectedFileName = dialog.file ?: return null
-    val selectedDirectory = dialog.directory ?: return null
-    return readImportedTextFile(File(selectedDirectory, selectedFileName))
+    val selectedFiles = dialog.files?.toList().orEmpty()
+    if (selectedFiles.isNotEmpty()) {
+        return selectedFiles.mapNotNull(::readImportedTextFile)
+    }
+
+    val selectedFileName = dialog.file ?: return emptyList()
+    val selectedDirectory = dialog.directory ?: return emptyList()
+    return listOfNotNull(readImportedTextFile(File(selectedDirectory, selectedFileName)))
 }
 
 internal fun readImportedTextFile(file: File): ImportedTextFile? {

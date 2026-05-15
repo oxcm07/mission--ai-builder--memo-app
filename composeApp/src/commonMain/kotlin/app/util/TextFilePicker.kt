@@ -6,4 +6,4 @@ data class ImportedTextFile(
     val encodingName: String = "UTF-8"
 )
 
-expect fun pickTextFile(): ImportedTextFile?
+expect fun pickTextFiles(): List<ImportedTextFile>

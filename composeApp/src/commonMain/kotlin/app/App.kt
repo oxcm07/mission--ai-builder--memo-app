@@ -14,8 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import app.state.NotesViewModel
 import app.ui.MainScreen
-import app.util.openNotesDataFolder
-import app.util.pickTextFile
+import app.util.pickTextFiles
 
 @Composable
 fun App(
@@ -29,7 +28,8 @@ fun App(
     onIncreaseFontSize: () -> Unit,
     onSelectFont: (String) -> Unit,
     themeModeLabel: String,
-    onCycleThemeMode: () -> Unit,
+    availableThemeModeLabels: List<String>,
+    onSelectThemeMode: (String) -> Unit,
     onOpenStickyNote: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -70,23 +70,21 @@ fun App(
             onIncreaseFontSize = onIncreaseFontSize,
             onSelectFont = onSelectFont,
             themeModeLabel = themeModeLabel,
-            onCycleThemeMode = onCycleThemeMode,
+            availableThemeModeLabels = availableThemeModeLabels,
+            onSelectThemeMode = onSelectThemeMode,
             onCreateNote = viewModel::createNote,
             onImportTextFile = {
-                pickTextFile()?.let(viewModel::importTextFile)
+                pickTextFiles().forEach(viewModel::importTextFile)
             },
-            onOpenDataFolder = { openNotesDataFolder() },
             onSelectNote = viewModel::selectNote,
             onSelectFolder = viewModel::selectFolder,
             onCreateFolder = viewModel::createFolder,
             onRequestDeleteFolder = viewModel::requestDeleteFolder,
             onConfirmDeleteFolder = viewModel::confirmDeleteFolder,
             onCancelDeleteFolder = viewModel::cancelDeleteFolder,
-            onMoveSelectedNoteToFolder = viewModel::moveSelectedNoteToFolder,
             onUpdateTitle = viewModel::updateSelectedNoteTitle,
             onUpdateContent = viewModel::updateSelectedNoteContent,
             onSearch = viewModel::updateSearchQuery,
-            onTogglePinned = viewModel::togglePinned,
             onOpenStickyNote = onOpenStickyNote,
             onRequestDelete = viewModel::requestDelete,
             onConfirmDelete = viewModel::confirmDelete,
