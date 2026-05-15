@@ -16,7 +16,12 @@ actual fun pickTextFile(): ImportedTextFile? {
 
     val selectedFileName = dialog.file ?: return null
     val selectedDirectory = dialog.directory ?: return null
-    val file = File(selectedDirectory, selectedFileName)
+    return readImportedTextFile(File(selectedDirectory, selectedFileName))
+}
+
+internal fun readImportedTextFile(file: File): ImportedTextFile? {
+    if (!file.isFile || !file.name.endsWith(".txt", ignoreCase = true)) return null
+
     val content = runCatching { file.readText(Charsets.UTF_8) }
         .getOrElse { file.readText(Charset.defaultCharset()) }
 
