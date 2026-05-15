@@ -61,6 +61,7 @@ fun EditorPane(
         )
 
         if (selectedTab == 0) {
+            FieldLabel("제목")
             PlainTextField(
                 value = note.title,
                 onValueChange = onTitleChange,
@@ -71,9 +72,12 @@ fun EditorPane(
                     fontWeight = FontWeight.Bold
                 ),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(18.dp))
+            FieldLabel("내용")
             PlainTextField(
                 value = note.content,
                 onValueChange = onContentChange,
@@ -84,7 +88,9 @@ fun EditorPane(
                     lineHeight = 24.sp
                 ),
                 singleLine = false,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             )
         } else {
             Column(Modifier.fillMaxSize()) {
@@ -107,6 +113,17 @@ fun EditorPane(
             }
         }
     }
+}
+
+@Composable
+private fun FieldLabel(text: String) {
+    Text(
+        text = text,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(bottom = 6.dp)
+    )
 }
 
 @Composable
