@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -45,6 +46,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.model.Note
@@ -485,23 +487,49 @@ private fun StatusBar(
             text = "$notesCount notes",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
-            modifier = Modifier.width(220.dp)
+            modifier = Modifier.width(140.dp)
         )
         val status = when {
             isSaving -> "저장 중..."
             saveError != null -> saveError
             else -> "저장됨"
         }
-        Text(
-            text = "$status · 글자 $selectedCharCount · 줄 $selectedLineCount · $selectedEncodingName",
-            color = if (saveError == null) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.error
-            },
-            fontSize = 12.sp
-        )
+        val statusColor = if (saveError == null) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.error
+        }
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatusItem(
+                text = status,
+                color = statusColor,
+                modifier = Modifier.weight(1f)
+            )
+            StatusItem(text = "글자 $selectedCharCount")
+            StatusItem(text = "줄 $selectedLineCount")
+            StatusItem(text = selectedEncodingName)
+        }
     }
+}
+
+@Composable
+private fun StatusItem(
+    text: String,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = text,
+        color = color,
+        fontSize = 12.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+    )
 }
 
 private fun separatorColor(darkMode: Boolean): Color =
