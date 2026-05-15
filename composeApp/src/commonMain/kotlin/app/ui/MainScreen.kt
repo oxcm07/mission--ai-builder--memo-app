@@ -53,6 +53,9 @@ private val ListDark = Color(0xFF1F1F21)
 fun MainScreen(
     state: NotesState,
     darkMode: Boolean,
+    editorFontSizeSp: Int,
+    onDecreaseFontSize: () -> Unit,
+    onIncreaseFontSize: () -> Unit,
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
@@ -119,6 +122,9 @@ fun MainScreen(
             Toolbar(
                 darkMode = darkMode,
                 selectedNote = selectedNote,
+                editorFontSizeSp = editorFontSizeSp,
+                onDecreaseFontSize = onDecreaseFontSize,
+                onIncreaseFontSize = onIncreaseFontSize,
                 onToggleDarkMode = onToggleDarkMode,
                 onCreateNote = onCreateNote,
                 onImportTextFile = onImportTextFile,
@@ -164,6 +170,7 @@ fun MainScreen(
                     } else {
                         EditorPane(
                             note = selectedNote,
+                            editorFontSizeSp = editorFontSizeSp,
                             onTitleChange = onUpdateTitle,
                             onContentChange = onUpdateContent
                         )
@@ -194,6 +201,9 @@ fun MainScreen(
 private fun Toolbar(
     darkMode: Boolean,
     selectedNote: Note?,
+    editorFontSizeSp: Int,
+    onDecreaseFontSize: () -> Unit,
+    onIncreaseFontSize: () -> Unit,
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
@@ -218,6 +228,14 @@ private fun Toolbar(
         Spacer(Modifier.weight(1f))
         ToolbarButton(text = "새 메모", onClick = onCreateNote)
         ToolbarButton(text = "TXT 가져오기", onClick = onImportTextFile)
+        ToolbarButton(text = "A-", onClick = onDecreaseFontSize)
+        Text(
+            text = "${editorFontSizeSp}sp",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+        ToolbarButton(text = "A+", onClick = onIncreaseFontSize)
         ToolbarButton(
             text = "띄우기",
             enabled = selectedNote != null,

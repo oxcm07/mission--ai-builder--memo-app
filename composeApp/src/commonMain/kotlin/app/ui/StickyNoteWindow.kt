@@ -29,6 +29,7 @@ private val StickyMutedText = Color(0xFF7A6A2C)
 @Composable
 fun StickyNoteWindow(
     note: Note,
+    editorFontSizeSp: Int,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onClose: () -> Unit,
@@ -62,13 +63,18 @@ fun StickyNoteWindow(
             singleLine = true,
             textStyle = TextStyle(
                 color = StickyText,
-                fontSize = 20.sp,
+                fontSize = (editorFontSizeSp + 4).sp,
                 fontWeight = FontWeight.Bold
             ),
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxWidth()) {
                     if (note.title.isBlank()) {
-                        Text("제목", color = StickyMutedText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "제목",
+                            color = StickyMutedText,
+                            fontSize = (editorFontSizeSp + 4).sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     innerTextField()
                 }
@@ -83,13 +89,13 @@ fun StickyNoteWindow(
             onValueChange = onContentChange,
             textStyle = TextStyle(
                 color = StickyText,
-                fontSize = 15.sp,
-                lineHeight = 22.sp
+                fontSize = editorFontSizeSp.sp,
+                lineHeight = (editorFontSizeSp + 7).sp
             ),
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxSize()) {
                     if (note.content.isBlank()) {
-                        Text("내용", color = StickyMutedText, fontSize = 15.sp)
+                        Text("내용", color = StickyMutedText, fontSize = editorFontSizeSp.sp)
                     }
                     innerTextField()
                 }

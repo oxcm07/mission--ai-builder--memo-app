@@ -17,6 +17,9 @@ import app.util.pickTextFile
 fun App(
     viewModel: NotesViewModel,
     darkMode: Boolean,
+    editorFontSizeSp: Int,
+    onDecreaseFontSize: () -> Unit,
+    onIncreaseFontSize: () -> Unit,
     onToggleDarkMode: () -> Unit,
     onOpenStickyNote: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -49,6 +52,9 @@ fun App(
         MainScreen(
             state = state,
             darkMode = darkMode,
+            editorFontSizeSp = editorFontSizeSp,
+            onDecreaseFontSize = onDecreaseFontSize,
+            onIncreaseFontSize = onIncreaseFontSize,
             onToggleDarkMode = onToggleDarkMode,
             onCreateNote = viewModel::createNote,
             onImportTextFile = {

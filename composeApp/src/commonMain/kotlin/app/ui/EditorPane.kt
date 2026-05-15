@@ -29,11 +29,13 @@ import app.model.Note
 @Composable
 fun EditorPane(
     note: Note,
+    editorFontSizeSp: Int,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember(note.id) { mutableIntStateOf(0) }
+    val bodyLineHeight = (editorFontSizeSp + 8).sp
 
     Column(
         modifier = modifier
@@ -68,13 +70,13 @@ fun EditorPane(
                 placeholder = "제목",
                 textStyle = TextStyle(
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 26.sp,
+                    fontSize = (editorFontSizeSp + 10).sp,
                     fontWeight = FontWeight.Bold
                 ),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(42.dp)
+                    .height((editorFontSizeSp + 26).dp)
             )
             Spacer(Modifier.height(18.dp))
             FieldLabel("내용")
@@ -84,8 +86,8 @@ fun EditorPane(
                 placeholder = "메모",
                 textStyle = TextStyle(
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp
+                    fontSize = editorFontSizeSp.sp,
+                    lineHeight = bodyLineHeight
                 ),
                 singleLine = false,
                 modifier = Modifier
@@ -96,7 +98,7 @@ fun EditorPane(
             Column(Modifier.fillMaxSize()) {
                 Text(
                     text = note.displayTitle,
-                    fontSize = 26.sp,
+                    fontSize = (editorFontSizeSp + 10).sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(16.dp))
@@ -107,8 +109,8 @@ fun EditorPane(
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp
+                    fontSize = editorFontSizeSp.sp,
+                    lineHeight = bodyLineHeight
                 )
             }
         }

@@ -63,6 +63,7 @@ fun main() = application {
     val state by viewModel.state.collectAsState()
     val mainWindowState = rememberWindowState(size = DpSize(1100.dp, 720.dp))
     var darkMode by remember { mutableStateOf(false) }
+    var editorFontSizeSp by remember { mutableStateOf(16) }
     var stickyNoteIds by remember { mutableStateOf(emptyList<String>()) }
     val existingNoteIds = state.notes.map { it.id }.toSet()
 
@@ -130,6 +131,9 @@ fun main() = application {
             App(
                 viewModel = viewModel,
                 darkMode = darkMode,
+                editorFontSizeSp = editorFontSizeSp,
+                onDecreaseFontSize = { editorFontSizeSp = (editorFontSizeSp - 1).coerceAtLeast(12) },
+                onIncreaseFontSize = { editorFontSizeSp = (editorFontSizeSp + 1).coerceAtMost(28) },
                 onToggleDarkMode = { darkMode = !darkMode },
                 onOpenStickyNote = { noteId ->
                     stickyNoteIds = (stickyNoteIds + noteId).distinct()
@@ -158,6 +162,7 @@ fun main() = application {
                     ) {
                         StickyNoteWindow(
                             note = note,
+                            editorFontSizeSp = editorFontSizeSp,
                             onTitleChange = { viewModel.updateNoteTitle(noteId, it) },
                             onContentChange = { viewModel.updateNoteContent(noteId, it) },
                             onClose = { stickyNoteIds = stickyNoteIds - noteId }
