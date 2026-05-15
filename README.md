@@ -2,22 +2,58 @@
 
 Kotlin Multiplatform와 Compose Multiplatform Desktop으로 만든 로컬 파일 기반 메모 앱입니다.
 
-## 기능
+## 주요 기능
 
-- 메모 목록, 제목/본문 편집, 새 메모 생성
-- 제목과 본문 대상 실시간 검색
-- 500ms debounce 자동 저장 및 `Ctrl/Cmd + S` 즉시 저장
-- 삭제 전 확인 다이얼로그
-- pinned 메모 상단 정렬
-- 다크 모드 토글
-- 본문 글자 수와 저장 상태 표시
-- 앱 재실행 후에도 JSON 파일로 메모 유지
+- Apple Notes 스타일의 3단 레이아웃
+  - 폴더 패널
+  - 메모 목록
+  - 편집 영역
+- Windows 11 스타일 커스텀 타이틀바
+  - 최소화, 최대화/복원, 닫기 버튼
+  - 타이틀바 드래그로 창 이동
+  - 다크 모드 전환 시 타이틀바도 다크 색상으로 전환
+- 메모 생성, 수정, 삭제
+  - 제목과 본문 입력
+  - 제목이 비어 있으면 본문 첫 줄을 목록 제목처럼 표시
+  - 삭제 전 확인 다이얼로그
+- 자동 저장
+  - 제목이나 본문 수정 후 debounce 자동 저장
+  - `Ctrl/Cmd + S` 즉시 저장
+  - 저장 실패 시 하단 상태 영역에 오류 표시
+- 검색
+  - 제목과 본문 대상 실시간 검색
+  - 대소문자 구분 없이 검색
+- 고정 메모
+  - 중요한 메모를 상단에 고정
+  - 고정 메모는 최근 수정순보다 우선 표시
+- TXT 파일 가져오기
+  - `TXT 가져오기` 버튼으로 `.txt` 파일을 새 메모로 저장
+  - 앱 창에 `.txt` 파일을 드래그앤드롭해 새 메모로 저장
+- Sticky Notes 스타일 창
+  - 선택한 메모를 `띄우기` 버튼으로 별도 작은 창에 표시
+  - Sticky 창에서 수정한 제목/본문도 기존 메모와 함께 자동 저장
+- 다크 모드
+  - 앱 내부 토글 제공
+  - 사이드바, 편집 영역, 상태바, 타이틀바가 함께 전환
+- 기타
+  - 현재 메모 본문 글자 수 표시
+  - 편집/미리보기 탭
+  - 단축키: 새 메모, 저장, 검색 포커스, 삭제 요청
 
-## 저장 위치
+## 저장 방식
 
-기본 저장 파일은 사용자 홈 디렉터리의 `.memo/notes.json`입니다.
+메모는 사용자 홈 디렉터리 아래 JSON 파일로 저장됩니다.
 
-저장 시 `notes.json.tmp`에 먼저 기록한 뒤 교체하며, 기존 파일은 가능한 경우 `notes.json.bak`로 백업합니다.
+```text
+~/.memo/notes.json
+```
+
+저장 시 임시 파일에 먼저 기록한 뒤 교체하며, 기존 파일은 가능한 경우 백업합니다.
+
+```text
+~/.memo/notes.json.bak
+```
+
 손상된 JSON 파일을 발견하면 백업 파일을 만든 뒤 빈 목록으로 시작합니다.
 
 ## 실행
@@ -36,6 +72,8 @@ Windows:
 
 ## 테스트
 
+macOS/Linux:
+
 ```shell
 ./gradlew :composeApp:allTests
 ```
@@ -46,9 +84,23 @@ Windows:
 .\gradlew.bat :composeApp:allTests
 ```
 
+## 빌드
+
+```shell
+./gradlew build
+```
+
+Windows:
+
+```shell
+.\gradlew.bat build
+```
+
 ## 패키징
 
 JDK 17 이상을 기준으로 현재 OS용 배포 파일을 만들 수 있습니다.
+
+macOS/Linux:
 
 ```shell
 ./gradlew packageDistributionForCurrentOS
@@ -59,3 +111,13 @@ Windows:
 ```shell
 .\gradlew.bat packageDistributionForCurrentOS
 ```
+
+## 기술 스택
+
+- Kotlin Multiplatform
+- Compose Multiplatform for Desktop
+- Gradle Kotlin DSL
+- Kotlin Serialization
+- kotlinx-datetime
+- 로컬 JSON 파일 저장소
+- 단순 MVVM 스타일 상태 관리
