@@ -74,6 +74,7 @@ fun MainScreen(
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
+    onOpenDataFolder: () -> Unit,
     onSelectNote: (String) -> Unit,
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
@@ -150,6 +151,7 @@ fun MainScreen(
                 onToggleDarkMode = onToggleDarkMode,
                 onCreateNote = onCreateNote,
                 onImportTextFile = onImportTextFile,
+                onOpenDataFolder = onOpenDataFolder,
                 onMoveSelectedNoteToFolder = onMoveSelectedNoteToFolder,
                 onTogglePinned = onTogglePinned,
                 onOpenStickyNote = onOpenStickyNote,
@@ -242,6 +244,7 @@ private fun Toolbar(
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
+    onOpenDataFolder: () -> Unit,
     onMoveSelectedNoteToFolder: (String) -> Unit,
     onTogglePinned: (String) -> Unit,
     onOpenStickyNote: (String) -> Unit,
@@ -267,6 +270,7 @@ private fun Toolbar(
         Spacer(Modifier.weight(1f))
         ToolbarButton(text = "새 메모", onClick = onCreateNote)
         ToolbarButton(text = "TXT 가져오기", onClick = onImportTextFile)
+        ToolbarButton(text = "저장 폴더", onClick = onOpenDataFolder)
         Box {
             ToolbarButton(text = selectedFontName, onClick = { fontMenuExpanded = true })
             DropdownMenu(

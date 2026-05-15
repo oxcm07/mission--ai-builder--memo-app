@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import app.state.NotesViewModel
 import app.ui.MainScreen
+import app.util.openNotesDataFolder
 import app.util.pickTextFile
 
 @Composable
@@ -72,6 +73,7 @@ fun App(
             onImportTextFile = {
                 pickTextFile()?.let(viewModel::importTextFile)
             },
+            onOpenDataFolder = { openNotesDataFolder() },
             onSelectNote = viewModel::selectNote,
             onSelectFolder = viewModel::selectFolder,
             onCreateFolder = viewModel::createFolder,
