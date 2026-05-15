@@ -1,5 +1,16 @@
 package com.back
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,18 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +44,8 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
 import java.awt.Frame
+import java.awt.MouseInfo
+import java.awt.Point
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
@@ -54,7 +55,6 @@ import java.awt.dnd.DropTargetDropEvent
 import java.awt.event.ContainerAdapter
 import java.awt.event.ContainerEvent
 import java.io.File
-import kotlin.math.roundToInt
 
 fun main() = application {
     val scope = rememberCoroutineScope()
@@ -77,6 +77,8 @@ fun main() = application {
         undecorated = true
     ) {
         window.minimumSize = Dimension(800, 500)
+        val dragState = remember { WindowDragState() }
+
         DisposableEffect(window) {
             val dropTargets = installTextFileDropTargets(window) { file ->
                 readImportedTextFile(file)?.let(viewModel::importTextFile)
@@ -90,13 +92,30 @@ fun main() = application {
         Column(Modifier.fillMaxSize()) {
             WindowsTitleBar(
                 darkMode = darkMode,
-                onDrag = { dragX, dragY ->
+                onDragStart = {
                     if (window.extendedState and Frame.MAXIMIZED_BOTH != Frame.MAXIMIZED_BOTH) {
+                        dragState.startPointer = MouseInfo.getPointerInfo().location
+                        dragState.startWindowLocation = window.location
+                    }
+                },
+                onDrag = {
+                    val startPointer = dragState.startPointer
+                    val startWindowLocation = dragState.startWindowLocation
+                    if (
+                        startPointer != null &&
+                        startWindowLocation != null &&
+                        window.extendedState and Frame.MAXIMIZED_BOTH != Frame.MAXIMIZED_BOTH
+                    ) {
+                        val currentPointer = MouseInfo.getPointerInfo().location
                         window.setLocation(
-                            window.location.x + dragX.roundToInt(),
-                            window.location.y + dragY.roundToInt()
+                            startWindowLocation.x + currentPointer.x - startPointer.x,
+                            startWindowLocation.y + currentPointer.y - startPointer.y
                         )
                     }
+                },
+                onDragEnd = {
+                    dragState.startPointer = null
+                    dragState.startWindowLocation = null
                 },
                 onMinimize = { window.isMinimized = true },
                 onToggleMaximize = {
@@ -150,10 +169,17 @@ fun main() = application {
     }
 }
 
+private class WindowDragState {
+    var startPointer: Point? = null
+    var startWindowLocation: Point? = null
+}
+
 @Composable
 private fun WindowsTitleBar(
     darkMode: Boolean,
-    onDrag: (Float, Float) -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: () -> Unit,
+    onDragEnd: () -> Unit,
     onMinimize: () -> Unit,
     onToggleMaximize: () -> Unit,
     onClose: () -> Unit
@@ -174,9 +200,13 @@ private fun WindowsTitleBar(
                 .weight(1f)
                 .fillMaxHeight()
                 .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
+                    detectDragGestures(
+                        onDragStart = { onDragStart() },
+                        onDragEnd = onDragEnd,
+                        onDragCancel = onDragEnd
+                    ) { change, _ ->
                         change.consume()
-                        onDrag(dragAmount.x, dragAmount.y)
+                        onDrag()
                     }
                 },
             contentAlignment = Alignment.CenterStart
