@@ -65,7 +65,8 @@ fun MainScreen(
     onRequestDelete: (Note) -> Unit,
     onConfirmDelete: () -> Unit,
     onCancelDelete: () -> Unit,
-    onSaveNow: () -> Unit
+    onSaveNow: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val visibleNotes = state.visibleNotes()
     val selectedNote = state.selectedNote
@@ -81,7 +82,7 @@ fun MainScreen(
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .focusRequester(appFocusRequester)
             .focusable()
@@ -115,7 +116,7 @@ fun MainScreen(
             }
     ) {
         Column(Modifier.fillMaxSize()) {
-            TopBar(
+            Toolbar(
                 darkMode = darkMode,
                 selectedNote = selectedNote,
                 onToggleDarkMode = onToggleDarkMode,
@@ -190,7 +191,7 @@ fun MainScreen(
 }
 
 @Composable
-private fun TopBar(
+private fun Toolbar(
     darkMode: Boolean,
     selectedNote: Note?,
     onToggleDarkMode: () -> Unit,
@@ -203,14 +204,14 @@ private fun TopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(48.dp)
             .background(if (darkMode) SidebarDark else SidebarLight)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Memo",
-            fontSize = 18.sp,
+            text = "메모",
+            fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )

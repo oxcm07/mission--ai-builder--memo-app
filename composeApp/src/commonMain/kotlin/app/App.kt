@@ -7,9 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import app.state.NotesViewModel
 import app.ui.MainScreen
@@ -18,10 +16,12 @@ import app.util.pickTextFile
 @Composable
 fun App(
     viewModel: NotesViewModel,
-    onOpenStickyNote: (String) -> Unit
+    darkMode: Boolean,
+    onToggleDarkMode: () -> Unit,
+    onOpenStickyNote: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
-    var darkMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.loadNotes()
@@ -49,7 +49,7 @@ fun App(
         MainScreen(
             state = state,
             darkMode = darkMode,
-            onToggleDarkMode = { darkMode = !darkMode },
+            onToggleDarkMode = onToggleDarkMode,
             onCreateNote = viewModel::createNote,
             onImportTextFile = {
                 pickTextFile()?.let(viewModel::importTextFile)
@@ -63,7 +63,8 @@ fun App(
             onRequestDelete = viewModel::requestDelete,
             onConfirmDelete = viewModel::confirmDelete,
             onCancelDelete = viewModel::cancelDelete,
-            onSaveNow = viewModel::saveNow
+            onSaveNow = viewModel::saveNow,
+            modifier = modifier
         )
     }
 }

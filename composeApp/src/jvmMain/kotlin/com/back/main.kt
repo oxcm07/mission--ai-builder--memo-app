@@ -1,7 +1,10 @@
 package com.back
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -11,9 +14,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -25,6 +44,7 @@ import storage.DesktopNotesRepository
 import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
+import java.awt.Frame
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
@@ -34,6 +54,7 @@ import java.awt.dnd.DropTargetDropEvent
 import java.awt.event.ContainerAdapter
 import java.awt.event.ContainerEvent
 import java.io.File
+import kotlin.math.roundToInt
 
 fun main() = application {
     val scope = rememberCoroutineScope()
@@ -41,6 +62,7 @@ fun main() = application {
     val viewModel = remember(repository) { NotesViewModel(repository, scope) }
     val state by viewModel.state.collectAsState()
     val mainWindowState = rememberWindowState(size = DpSize(1100.dp, 720.dp))
+    var darkMode by remember { mutableStateOf(false) }
     var stickyNoteIds by remember { mutableStateOf(emptyList<String>()) }
     val existingNoteIds = state.notes.map { it.id }.toSet()
 
@@ -51,7 +73,8 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "Memo",
-        state = mainWindowState
+        state = mainWindowState,
+        undecorated = true
     ) {
         window.minimumSize = Dimension(800, 500)
         DisposableEffect(window) {
@@ -64,12 +87,37 @@ fun main() = application {
             }
         }
 
-        App(
-            viewModel = viewModel,
-            onOpenStickyNote = { noteId ->
-                stickyNoteIds = (stickyNoteIds + noteId).distinct()
-            }
-        )
+        Column(Modifier.fillMaxSize()) {
+            WindowsTitleBar(
+                darkMode = darkMode,
+                onDrag = { dragX, dragY ->
+                    if (window.extendedState and Frame.MAXIMIZED_BOTH != Frame.MAXIMIZED_BOTH) {
+                        window.setLocation(
+                            window.location.x + dragX.roundToInt(),
+                            window.location.y + dragY.roundToInt()
+                        )
+                    }
+                },
+                onMinimize = { window.isMinimized = true },
+                onToggleMaximize = {
+                    window.extendedState = if (window.extendedState and Frame.MAXIMIZED_BOTH == Frame.MAXIMIZED_BOTH) {
+                        Frame.NORMAL
+                    } else {
+                        Frame.MAXIMIZED_BOTH
+                    }
+                },
+                onClose = ::exitApplication
+            )
+            App(
+                viewModel = viewModel,
+                darkMode = darkMode,
+                onToggleDarkMode = { darkMode = !darkMode },
+                onOpenStickyNote = { noteId ->
+                    stickyNoteIds = (stickyNoteIds + noteId).distinct()
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 
     stickyNoteIds.forEach { noteId ->
@@ -98,6 +146,82 @@ fun main() = application {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WindowsTitleBar(
+    darkMode: Boolean,
+    onDrag: (Float, Float) -> Unit,
+    onMinimize: () -> Unit,
+    onToggleMaximize: () -> Unit,
+    onClose: () -> Unit
+) {
+    val background = if (darkMode) Color(0xFF202020) else Color(0xFFF3F3F3)
+    val foreground = if (darkMode) Color(0xFFF5F5F5) else Color(0xFF202020)
+    val hover = if (darkMode) Color(0xFF343434) else Color(0xFFE7E7E7)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .background(background),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        onDrag(dragAmount.x, dragAmount.y)
+                    }
+                },
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = "Memo",
+                color = foreground,
+                fontSize = 12.sp
+            )
+        }
+        WindowButton(text = "_", foreground = foreground, hover = hover, onClick = onMinimize)
+        WindowButton(text = "□", foreground = foreground, hover = hover, onClick = onToggleMaximize)
+        WindowButton(
+            text = "X",
+            foreground = foreground,
+            hover = Color(0xFFE81123),
+            onClick = onClose
+        )
+    }
+}
+
+@Composable
+private fun WindowButton(
+    text: String,
+    foreground: Color,
+    hover: Color,
+    onClick: () -> Unit
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier
+            .width(46.dp)
+            .fillMaxHeight(),
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = foreground,
+            containerColor = Color.Transparent
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = text, fontSize = 12.sp, color = foreground)
         }
     }
 }
