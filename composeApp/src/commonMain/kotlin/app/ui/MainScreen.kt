@@ -250,13 +250,7 @@ private fun FolderPane(
     Column(
         modifier = modifier.padding(16.dp)
     ) {
-        Text(
-            text = "iCloud",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Spacer(Modifier.height(4.dp))
         Surface(
             color = AppleYellow.copy(alpha = 0.22f),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
