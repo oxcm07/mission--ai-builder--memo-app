@@ -93,13 +93,23 @@ class NotesViewModel(
     }
 
     fun updateSelectedNoteTitle(title: String) {
-        updateSelectedNote { note ->
+        val selectedId = mutableState.value.selectedNoteId ?: return
+        updateNoteTitle(selectedId, title)
+    }
+
+    fun updateSelectedNoteContent(content: String) {
+        val selectedId = mutableState.value.selectedNoteId ?: return
+        updateNoteContent(selectedId, content)
+    }
+
+    fun updateNoteTitle(noteId: String, title: String) {
+        updateNote(noteId) { note ->
             note.copy(title = title, updatedAt = nowProvider())
         }
     }
 
-    fun updateSelectedNoteContent(content: String) {
-        updateSelectedNote { note ->
+    fun updateNoteContent(noteId: String, content: String) {
+        updateNote(noteId) { note ->
             note.copy(content = content, updatedAt = nowProvider())
         }
     }
@@ -152,11 +162,6 @@ class NotesViewModel(
         scope.launch {
             saveCurrentNotes()
         }
-    }
-
-    private fun updateSelectedNote(transform: (Note) -> Note) {
-        val selectedId = mutableState.value.selectedNoteId ?: return
-        updateNote(selectedId, transform)
     }
 
     private fun updateNote(noteId: String, transform: (Note) -> Note) {

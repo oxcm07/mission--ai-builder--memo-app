@@ -61,6 +61,7 @@ fun MainScreen(
     onUpdateContent: (String) -> Unit,
     onSearch: (String) -> Unit,
     onTogglePinned: (String) -> Unit,
+    onOpenStickyNote: (String) -> Unit,
     onRequestDelete: (Note) -> Unit,
     onConfirmDelete: () -> Unit,
     onCancelDelete: () -> Unit,
@@ -121,6 +122,7 @@ fun MainScreen(
                 onCreateNote = onCreateNote,
                 onImportTextFile = onImportTextFile,
                 onTogglePinned = onTogglePinned,
+                onOpenStickyNote = onOpenStickyNote,
                 onRequestDelete = onRequestDelete
             )
 
@@ -195,6 +197,7 @@ private fun TopBar(
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
     onTogglePinned: (String) -> Unit,
+    onOpenStickyNote: (String) -> Unit,
     onRequestDelete: (Note) -> Unit
 ) {
     Row(
@@ -214,6 +217,11 @@ private fun TopBar(
         Spacer(Modifier.weight(1f))
         ToolbarButton(text = "새 메모", onClick = onCreateNote)
         ToolbarButton(text = "TXT 가져오기", onClick = onImportTextFile)
+        ToolbarButton(
+            text = "띄우기",
+            enabled = selectedNote != null,
+            onClick = { selectedNote?.let { onOpenStickyNote(it.id) } }
+        )
         ToolbarButton(
             text = if (selectedNote?.pinned == true) "고정 해제" else "고정",
             enabled = selectedNote != null,

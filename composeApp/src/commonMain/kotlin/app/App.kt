@@ -9,18 +9,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import app.repository.NotesRepository
 import app.state.NotesViewModel
 import app.ui.MainScreen
 import app.util.pickTextFile
 
 @Composable
-fun App(repository: NotesRepository) {
-    val scope = rememberCoroutineScope()
-    val viewModel = remember(repository) { NotesViewModel(repository, scope) }
+fun App(
+    viewModel: NotesViewModel,
+    onOpenStickyNote: (String) -> Unit
+) {
     val state by viewModel.state.collectAsState()
     var darkMode by remember { mutableStateOf(false) }
 
@@ -60,6 +59,7 @@ fun App(repository: NotesRepository) {
             onUpdateContent = viewModel::updateSelectedNoteContent,
             onSearch = viewModel::updateSearchQuery,
             onTogglePinned = viewModel::togglePinned,
+            onOpenStickyNote = onOpenStickyNote,
             onRequestDelete = viewModel::requestDelete,
             onConfirmDelete = viewModel::confirmDelete,
             onCancelDelete = viewModel::cancelDelete,
