@@ -3,6 +3,7 @@ package app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
@@ -43,6 +44,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
@@ -104,6 +107,9 @@ fun MainScreen(
     val appFocusRequester = remember { FocusRequester() }
     val sidebarColor = if (darkMode) SidebarDark else SidebarLight
     val listColor = if (darkMode) ListDark else ListLight
+    val density = LocalDensity.current
+    var folderPaneWidth by remember { mutableStateOf(220.dp) }
+    var notesPaneWidth by remember { mutableStateOf(320.dp) }
 
     LaunchedEffect(Unit) {
         appFocusRequester.requestFocus()
@@ -176,11 +182,14 @@ fun MainScreen(
                     onCreateFolder = onCreateFolder,
                     onRequestDeleteFolder = onRequestDeleteFolder,
                     modifier = Modifier
-                        .width(220.dp)
+                        .width(folderPaneWidth)
                         .fillMaxHeight()
                         .background(sidebarColor)
                 )
-                VerticalDivider(color = separatorColor(darkMode))
+                PaneResizeHandle(darkMode = darkMode) { dragAmount ->
+                    val delta = with(density) { dragAmount.toDp() }
+                    folderPaneWidth = (folderPaneWidth + delta).coerceIn(160.dp, 360.dp)
+                }
                 Sidebar(
                     notes = visibleNotes,
                     allNotesCount = state.notes.size,
@@ -190,11 +199,14 @@ fun MainScreen(
                     onSearch = onSearch,
                     onSelectNote = onSelectNote,
                     modifier = Modifier
-                        .width(320.dp)
+                        .width(notesPaneWidth)
                         .fillMaxHeight()
                         .background(listColor)
                 )
-                VerticalDivider(color = separatorColor(darkMode))
+                PaneResizeHandle(darkMode = darkMode) { dragAmount ->
+                    val delta = with(density) { dragAmount.toDp() }
+                    notesPaneWidth = (notesPaneWidth + delta).coerceIn(220.dp, 520.dp)
+                }
 
                 Box(
                     modifier = Modifier
@@ -245,6 +257,25 @@ fun MainScreen(
             onCancel = onCancelDeleteFolder
         )
     }
+}
+
+@Composable
+private fun PaneResizeHandle(
+    darkMode: Boolean,
+    onDrag: (Float) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .width(6.dp)
+            .fillMaxHeight()
+            .background(separatorColor(darkMode))
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { change, dragAmount ->
+                    change.consume()
+                    onDrag(dragAmount)
+                }
+            }
+    )
 }
 
 @Composable
