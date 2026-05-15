@@ -23,6 +23,7 @@ import app.ui.StickyNoteWindow
 import app.util.readImportedTextFile
 import storage.DesktopNotesRepository
 import java.awt.Component
+import java.awt.Container
 import java.awt.Dimension
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DnDConstants
@@ -30,6 +31,8 @@ import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetAdapter
 import java.awt.dnd.DropTargetDragEvent
 import java.awt.dnd.DropTargetDropEvent
+import java.awt.event.ContainerAdapter
+import java.awt.event.ContainerEvent
 import java.io.File
 
 fun main() = application {
@@ -52,12 +55,12 @@ fun main() = application {
     ) {
         window.minimumSize = Dimension(800, 500)
         DisposableEffect(window) {
-            val dropTarget = installTextFileDropTarget(window) { file ->
+            val dropTargets = installTextFileDropTargets(window) { file ->
                 readImportedTextFile(file)?.let(viewModel::importTextFile)
             }
 
             onDispose {
-                dropTarget.component?.dropTarget = null
+                dropTargets.dispose()
             }
         }
 
@@ -99,41 +102,93 @@ fun main() = application {
     }
 }
 
-private fun installTextFileDropTarget(
+private fun installTextFileDropTargets(
     component: Component,
     onTextFileDropped: (File) -> Unit
-): DropTarget {
-    return DropTarget(
-        component,
-        DnDConstants.ACTION_COPY,
-        object : DropTargetAdapter() {
-            override fun dragEnter(event: DropTargetDragEvent) {
-                if (event.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                    event.acceptDrag(DnDConstants.ACTION_COPY)
-                } else {
-                    event.rejectDrag()
-                }
+): DropTargetRegistration {
+    val registration = DropTargetRegistration()
+    registration.install(component, onTextFileDropped)
+    return registration
+}
+
+private class DropTargetRegistration {
+    private val dropTargets = mutableListOf<DropTarget>()
+    private val containerListeners = mutableListOf<Pair<Container, ContainerAdapter>>()
+
+    fun install(component: Component, onTextFileDropped: (File) -> Unit) {
+        if (component.dropTarget == null) {
+            dropTargets += DropTarget(
+                component,
+                DnDConstants.ACTION_COPY,
+                TextFileDropTarget(onTextFileDropped),
+                true
+            )
+        }
+
+        if (component is Container) {
+            component.components.forEach { child ->
+                install(child, onTextFileDropped)
             }
 
-            override fun drop(event: DropTargetDropEvent) {
-                try {
-                    if (!event.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                        event.rejectDrop()
-                        return
-                    }
-
-                    event.acceptDrop(DnDConstants.ACTION_COPY)
-                    val files = event.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<*>
-                    files
-                        ?.filterIsInstance<File>()
-                        ?.filter { it.name.endsWith(".txt", ignoreCase = true) }
-                        ?.forEach(onTextFileDropped)
-                    event.dropComplete(true)
-                } catch (exception: Exception) {
-                    event.dropComplete(false)
+            val listener = object : ContainerAdapter() {
+                override fun componentAdded(event: ContainerEvent) {
+                    install(event.child, onTextFileDropped)
                 }
             }
-        },
-        true
-    )
+            component.addContainerListener(listener)
+            containerListeners += component to listener
+        }
+    }
+
+    fun dispose() {
+        dropTargets.forEach { dropTarget ->
+            if (dropTarget.component?.dropTarget === dropTarget) {
+                dropTarget.component?.dropTarget = null
+            }
+        }
+        containerListeners.forEach { (container, listener) ->
+            container.removeContainerListener(listener)
+        }
+        dropTargets.clear()
+        containerListeners.clear()
+    }
+}
+
+private class TextFileDropTarget(
+    private val onTextFileDropped: (File) -> Unit
+) : DropTargetAdapter() {
+    override fun dragEnter(event: DropTargetDragEvent) {
+        acceptOrRejectDrag(event)
+    }
+
+    override fun dragOver(event: DropTargetDragEvent) {
+        acceptOrRejectDrag(event)
+    }
+
+    override fun drop(event: DropTargetDropEvent) {
+        try {
+            if (!event.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                event.rejectDrop()
+                return
+            }
+
+            event.acceptDrop(DnDConstants.ACTION_COPY)
+            val files = event.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<*>
+            files
+                ?.filterIsInstance<File>()
+                ?.filter { it.name.endsWith(".txt", ignoreCase = true) }
+                ?.forEach(onTextFileDropped)
+            event.dropComplete(true)
+        } catch (exception: Exception) {
+            event.dropComplete(false)
+        }
+    }
+
+    private fun acceptOrRejectDrag(event: DropTargetDragEvent) {
+        if (event.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            event.acceptDrag(DnDConstants.ACTION_COPY)
+        } else {
+            event.rejectDrag()
+        }
+    }
 }
