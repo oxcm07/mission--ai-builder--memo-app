@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,6 +31,7 @@ private val StickyMutedText = Color(0xFF7A6A2C)
 fun StickyNoteWindow(
     note: Note,
     editorFontSizeSp: Int,
+    fontFamily: FontFamily,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onClose: () -> Unit,
@@ -64,6 +66,7 @@ fun StickyNoteWindow(
             textStyle = TextStyle(
                 color = StickyText,
                 fontSize = (editorFontSizeSp + 4).sp,
+                fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold
             ),
             decorationBox = { innerTextField ->
@@ -73,6 +76,7 @@ fun StickyNoteWindow(
                             text = "제목",
                             color = StickyMutedText,
                             fontSize = (editorFontSizeSp + 4).sp,
+                            fontFamily = fontFamily,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -90,12 +94,13 @@ fun StickyNoteWindow(
             textStyle = TextStyle(
                 color = StickyText,
                 fontSize = editorFontSizeSp.sp,
+                fontFamily = fontFamily,
                 lineHeight = (editorFontSizeSp + 7).sp
             ),
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxSize()) {
                     if (note.content.isBlank()) {
-                        Text("내용", color = StickyMutedText, fontSize = editorFontSizeSp.sp)
+                        Text("내용", color = StickyMutedText, fontSize = editorFontSizeSp.sp, fontFamily = fontFamily)
                     }
                     innerTextField()
                 }

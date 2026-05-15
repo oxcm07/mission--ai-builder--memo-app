@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,7 +23,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,6 +41,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.model.Note
@@ -54,8 +61,12 @@ fun MainScreen(
     state: NotesState,
     darkMode: Boolean,
     editorFontSizeSp: Int,
+    fontFamily: FontFamily,
+    selectedFontName: String,
+    availableFontNames: List<String>,
     onDecreaseFontSize: () -> Unit,
     onIncreaseFontSize: () -> Unit,
+    onSelectFont: (String) -> Unit,
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
@@ -123,8 +134,11 @@ fun MainScreen(
                 darkMode = darkMode,
                 selectedNote = selectedNote,
                 editorFontSizeSp = editorFontSizeSp,
+                selectedFontName = selectedFontName,
+                availableFontNames = availableFontNames,
                 onDecreaseFontSize = onDecreaseFontSize,
                 onIncreaseFontSize = onIncreaseFontSize,
+                onSelectFont = onSelectFont,
                 onToggleDarkMode = onToggleDarkMode,
                 onCreateNote = onCreateNote,
                 onImportTextFile = onImportTextFile,
@@ -171,6 +185,7 @@ fun MainScreen(
                         EditorPane(
                             note = selectedNote,
                             editorFontSizeSp = editorFontSizeSp,
+                            fontFamily = fontFamily,
                             onTitleChange = onUpdateTitle,
                             onContentChange = onUpdateContent
                         )
@@ -202,8 +217,11 @@ private fun Toolbar(
     darkMode: Boolean,
     selectedNote: Note?,
     editorFontSizeSp: Int,
+    selectedFontName: String,
+    availableFontNames: List<String>,
     onDecreaseFontSize: () -> Unit,
     onIncreaseFontSize: () -> Unit,
+    onSelectFont: (String) -> Unit,
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
@@ -211,6 +229,8 @@ private fun Toolbar(
     onOpenStickyNote: (String) -> Unit,
     onRequestDelete: (Note) -> Unit
 ) {
+    var fontMenuExpanded by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -228,6 +248,24 @@ private fun Toolbar(
         Spacer(Modifier.weight(1f))
         ToolbarButton(text = "새 메모", onClick = onCreateNote)
         ToolbarButton(text = "TXT 가져오기", onClick = onImportTextFile)
+        Box {
+            ToolbarButton(text = selectedFontName, onClick = { fontMenuExpanded = true })
+            DropdownMenu(
+                expanded = fontMenuExpanded,
+                onDismissRequest = { fontMenuExpanded = false },
+                modifier = Modifier.heightIn(max = 360.dp)
+            ) {
+                availableFontNames.forEach { fontName ->
+                    DropdownMenuItem(
+                        text = { Text(fontName, fontSize = 13.sp) },
+                        onClick = {
+                            onSelectFont(fontName)
+                            fontMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
         ToolbarButton(text = "A-", onClick = onDecreaseFontSize)
         Text(
             text = "${editorFontSizeSp}sp",

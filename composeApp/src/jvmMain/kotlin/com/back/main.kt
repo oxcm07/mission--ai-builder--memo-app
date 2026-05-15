@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +46,7 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
 import java.awt.Frame
+import java.awt.GraphicsEnvironment
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.datatransfer.DataFlavor
@@ -64,6 +67,9 @@ fun main() = application {
     val mainWindowState = rememberWindowState(size = DpSize(1100.dp, 720.dp))
     var darkMode by remember { mutableStateOf(false) }
     var editorFontSizeSp by remember { mutableStateOf(16) }
+    val availableFontNames = remember { availableSystemFontNames() }
+    var selectedFontName by remember { mutableStateOf(defaultMemoFontName(availableFontNames)) }
+    val appFontFamily = remember(selectedFontName) { systemFontFamily(selectedFontName) }
     var stickyNoteIds by remember { mutableStateOf(emptyList<String>()) }
     val existingNoteIds = state.notes.map { it.id }.toSet()
 
@@ -132,8 +138,12 @@ fun main() = application {
                 viewModel = viewModel,
                 darkMode = darkMode,
                 editorFontSizeSp = editorFontSizeSp,
+                fontFamily = appFontFamily,
+                selectedFontName = selectedFontName,
+                availableFontNames = availableFontNames,
                 onDecreaseFontSize = { editorFontSizeSp = (editorFontSizeSp - 1).coerceAtLeast(12) },
                 onIncreaseFontSize = { editorFontSizeSp = (editorFontSizeSp + 1).coerceAtMost(28) },
+                onSelectFont = { selectedFontName = it },
                 onToggleDarkMode = { darkMode = !darkMode },
                 onOpenStickyNote = { noteId ->
                     stickyNoteIds = (stickyNoteIds + noteId).distinct()
@@ -163,6 +173,7 @@ fun main() = application {
                         StickyNoteWindow(
                             note = note,
                             editorFontSizeSp = editorFontSizeSp,
+                            fontFamily = appFontFamily,
                             onTitleChange = { viewModel.updateNoteTitle(noteId, it) },
                             onContentChange = { viewModel.updateNoteContent(noteId, it) },
                             onClose = { stickyNoteIds = stickyNoteIds - noteId }
@@ -178,6 +189,25 @@ private class WindowDragState {
     var startPointer: Point? = null
     var startWindowLocation: Point? = null
 }
+
+private fun availableSystemFontNames(): List<String> {
+    val installedFonts = GraphicsEnvironment
+        .getLocalGraphicsEnvironment()
+        .availableFontFamilyNames
+        .distinct()
+        .sortedWith(String.CASE_INSENSITIVE_ORDER)
+
+    return (listOf("Pretendard") + installedFonts)
+        .distinctBy { it.lowercase() }
+}
+
+private fun defaultMemoFontName(fontNames: List<String>): String =
+    fontNames.firstOrNull { it.equals("Pretendard", ignoreCase = true) }
+        ?: fontNames.firstOrNull { it.contains("Pretendard", ignoreCase = true) }
+        ?: "Pretendard"
+
+@OptIn(ExperimentalTextApi::class)
+private fun systemFontFamily(fontName: String): FontFamily = FontFamily(fontName)
 
 @Composable
 private fun WindowsTitleBar(

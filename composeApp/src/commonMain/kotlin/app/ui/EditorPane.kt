@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,6 +31,7 @@ import app.model.Note
 fun EditorPane(
     note: Note,
     editorFontSizeSp: Int,
+    fontFamily: FontFamily,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -71,6 +73,7 @@ fun EditorPane(
                 textStyle = TextStyle(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = (editorFontSizeSp + 10).sp,
+                    fontFamily = fontFamily,
                     fontWeight = FontWeight.Bold
                 ),
                 singleLine = true,
@@ -87,6 +90,7 @@ fun EditorPane(
                 textStyle = TextStyle(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = editorFontSizeSp.sp,
+                    fontFamily = fontFamily,
                     lineHeight = bodyLineHeight
                 ),
                 singleLine = false,
@@ -99,6 +103,7 @@ fun EditorPane(
                 Text(
                     text = note.displayTitle,
                     fontSize = (editorFontSizeSp + 10).sp,
+                    fontFamily = fontFamily,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(16.dp))
@@ -110,6 +115,7 @@ fun EditorPane(
                         MaterialTheme.colorScheme.onSurface
                     },
                     fontSize = editorFontSizeSp.sp,
+                    fontFamily = fontFamily,
                     lineHeight = bodyLineHeight
                 )
             }

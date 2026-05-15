@@ -3,12 +3,15 @@ package app
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import app.state.NotesViewModel
 import app.ui.MainScreen
 import app.util.pickTextFile
@@ -18,8 +21,12 @@ fun App(
     viewModel: NotesViewModel,
     darkMode: Boolean,
     editorFontSizeSp: Int,
+    fontFamily: FontFamily,
+    selectedFontName: String,
+    availableFontNames: List<String>,
     onDecreaseFontSize: () -> Unit,
     onIncreaseFontSize: () -> Unit,
+    onSelectFont: (String) -> Unit,
     onToggleDarkMode: () -> Unit,
     onOpenStickyNote: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -49,12 +56,17 @@ fun App(
             )
         }
     ) {
+        CompositionLocalProvider(LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = fontFamily)) {
         MainScreen(
             state = state,
             darkMode = darkMode,
             editorFontSizeSp = editorFontSizeSp,
+            fontFamily = fontFamily,
+            selectedFontName = selectedFontName,
+            availableFontNames = availableFontNames,
             onDecreaseFontSize = onDecreaseFontSize,
             onIncreaseFontSize = onIncreaseFontSize,
+            onSelectFont = onSelectFont,
             onToggleDarkMode = onToggleDarkMode,
             onCreateNote = viewModel::createNote,
             onImportTextFile = {
@@ -72,5 +84,6 @@ fun App(
             onSaveNow = viewModel::saveNow,
             modifier = modifier
         )
+        }
     }
 }
