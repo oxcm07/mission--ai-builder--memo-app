@@ -2,6 +2,7 @@ package app.state
 
 import app.model.Note
 import app.repository.NotesRepository
+import app.util.ImportedTextFile
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -52,6 +53,35 @@ class NotesViewModelTest {
         assertEquals("changed", updated.content)
         assertNotEquals(note.updatedAt, updated.updatedAt)
         assertEquals("2026-05-15T14:00:00Z", updated.updatedAt)
+    }
+
+    @Test
+    fun importTextFileCreatesSelectedNoteWithFileNameTitleAndContent() = runTest {
+        val repository = MemoryNotesRepository()
+        val viewModel = NotesViewModel(
+            repository = repository,
+            scope = this,
+            idProvider = { "imported-note" },
+            nowProvider = { "2026-05-15T14:00:00Z" },
+            autoSaveDelayMillis = 0
+        )
+
+        viewModel.loadNotes()
+        advanceUntilIdle()
+        viewModel.importTextFile(
+            ImportedTextFile(
+                fileName = "meeting-notes.txt",
+                content = "Discuss roadmap\nShip memo app"
+            )
+        )
+        advanceUntilIdle()
+
+        val imported = viewModel.state.value.notes.single()
+        assertEquals("imported-note", imported.id)
+        assertEquals("meeting-notes", imported.title)
+        assertEquals("Discuss roadmap\nShip memo app", imported.content)
+        assertEquals("imported-note", viewModel.state.value.selectedNoteId)
+        assertEquals(viewModel.state.value.notes, repository.savedNotes)
     }
 
     @Test

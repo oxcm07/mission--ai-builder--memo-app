@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import app.repository.NotesRepository
 import app.state.NotesViewModel
 import app.ui.MainScreen
+import app.util.pickTextFile
 
 @Composable
 fun App(repository: NotesRepository) {
@@ -51,6 +52,9 @@ fun App(repository: NotesRepository) {
             darkMode = darkMode,
             onToggleDarkMode = { darkMode = !darkMode },
             onCreateNote = viewModel::createNote,
+            onImportTextFile = {
+                pickTextFile()?.let(viewModel::importTextFile)
+            },
             onSelectNote = viewModel::selectNote,
             onUpdateTitle = viewModel::updateSelectedNoteTitle,
             onUpdateContent = viewModel::updateSelectedNoteContent,

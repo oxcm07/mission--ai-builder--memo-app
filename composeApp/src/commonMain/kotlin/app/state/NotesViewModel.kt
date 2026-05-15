@@ -3,6 +3,7 @@ package app.state
 import app.model.Note
 import app.repository.NotesRepository
 import app.util.Debouncer
+import app.util.ImportedTextFile
 import app.util.newNoteId
 import app.util.nowIsoString
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +55,26 @@ class NotesViewModel(
             id = idProvider(),
             title = "",
             content = "",
+            createdAt = now,
+            updatedAt = now
+        )
+        mutableState.update {
+            it.copy(
+                notes = sortNotes(listOf(note) + it.notes),
+                selectedNoteId = note.id,
+                saveError = null
+            )
+        }
+        saveDebounced()
+    }
+
+    fun importTextFile(file: ImportedTextFile) {
+        val now = nowProvider()
+        val title = file.fileName.substringBeforeLast(".").trim().ifBlank { "가져온 메모" }
+        val note = Note(
+            id = idProvider(),
+            title = title,
+            content = file.content,
             createdAt = now,
             updatedAt = now
         )

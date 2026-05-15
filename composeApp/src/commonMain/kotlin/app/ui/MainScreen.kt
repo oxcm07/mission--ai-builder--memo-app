@@ -55,6 +55,7 @@ fun MainScreen(
     darkMode: Boolean,
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
+    onImportTextFile: () -> Unit,
     onSelectNote: (String) -> Unit,
     onUpdateTitle: (String) -> Unit,
     onUpdateContent: (String) -> Unit,
@@ -118,6 +119,7 @@ fun MainScreen(
                 selectedNote = selectedNote,
                 onToggleDarkMode = onToggleDarkMode,
                 onCreateNote = onCreateNote,
+                onImportTextFile = onImportTextFile,
                 onTogglePinned = onTogglePinned,
                 onRequestDelete = onRequestDelete
             )
@@ -191,6 +193,7 @@ private fun TopBar(
     selectedNote: Note?,
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
+    onImportTextFile: () -> Unit,
     onTogglePinned: (String) -> Unit,
     onRequestDelete: (Note) -> Unit
 ) {
@@ -210,6 +213,7 @@ private fun TopBar(
         )
         Spacer(Modifier.weight(1f))
         ToolbarButton(text = "새 메모", onClick = onCreateNote)
+        ToolbarButton(text = "TXT 가져오기", onClick = onImportTextFile)
         ToolbarButton(
             text = if (selectedNote?.pinned == true) "고정 해제" else "고정",
             enabled = selectedNote != null,
