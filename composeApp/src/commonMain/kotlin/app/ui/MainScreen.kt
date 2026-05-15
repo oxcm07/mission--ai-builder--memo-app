@@ -196,6 +196,8 @@ fun MainScreen(
             StatusBar(
                 notesCount = state.notes.size,
                 selectedCharCount = selectedNote?.content?.length ?: 0,
+                selectedLineCount = selectedNote?.content?.lineCount() ?: 0,
+                selectedEncodingName = selectedNote?.encodingName ?: "UTF-8",
                 isSaving = state.isSaving,
                 saveError = state.saveError,
                 darkMode = darkMode
@@ -355,6 +357,8 @@ private fun FolderPane(
 private fun StatusBar(
     notesCount: Int,
     selectedCharCount: Int,
+    selectedLineCount: Int,
+    selectedEncodingName: String,
     isSaving: Boolean,
     saveError: String?,
     darkMode: Boolean
@@ -371,7 +375,7 @@ private fun StatusBar(
             text = "$notesCount notes",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
-            modifier = Modifier.width(526.dp)
+            modifier = Modifier.width(220.dp)
         )
         val status = when {
             isSaving -> "저장 중..."
@@ -379,7 +383,7 @@ private fun StatusBar(
             else -> "저장됨"
         }
         Text(
-            text = "$status · $selectedCharCount chars",
+            text = "$status · 글자 $selectedCharCount · 줄 $selectedLineCount · $selectedEncodingName",
             color = if (saveError == null) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             } else {
@@ -392,3 +396,6 @@ private fun StatusBar(
 
 private fun separatorColor(darkMode: Boolean): Color =
     if (darkMode) Color(0xFF3A3A3C) else SeparatorLight
+
+private fun String.lineCount(): Int =
+    if (isEmpty()) 0 else lineSequence().count()

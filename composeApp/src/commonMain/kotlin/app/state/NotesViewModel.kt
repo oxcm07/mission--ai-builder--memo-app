@@ -76,7 +76,8 @@ class NotesViewModel(
             title = title,
             content = file.content,
             createdAt = now,
-            updatedAt = now
+            updatedAt = now,
+            encodingName = file.encodingName
         )
         mutableState.update {
             it.copy(

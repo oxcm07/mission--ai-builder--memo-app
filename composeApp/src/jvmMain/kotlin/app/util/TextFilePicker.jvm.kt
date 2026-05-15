@@ -25,29 +25,44 @@ actual fun pickTextFile(): ImportedTextFile? {
 internal fun readImportedTextFile(file: File): ImportedTextFile? {
     if (!file.isFile || !file.name.endsWith(".txt", ignoreCase = true)) return null
 
+    val decoded = decodeTextFileBytes(file.readBytes())
     return ImportedTextFile(
         fileName = file.name,
-        content = decodeTextBytes(file.readBytes())
+        content = decoded.text,
+        encodingName = decoded.encodingName
     )
 }
 
-internal fun decodeTextBytes(bytes: ByteArray): String {
+internal fun decodeTextBytes(bytes: ByteArray): String =
+    decodeTextFileBytes(bytes).text
+
+internal fun decodeTextFileBytes(bytes: ByteArray): DecodedText {
     detectBom(bytes)?.let { (charset, offset) ->
-        return String(bytes, offset, bytes.size - offset, charset)
+        return DecodedText(
+            text = String(bytes, offset, bytes.size - offset, charset),
+            encodingName = "${charset.displayName()} BOM"
+        )
     }
 
     detectUtf16WithoutBom(bytes)?.let { charset ->
-        return String(bytes, charset)
+        return DecodedText(String(bytes, charset), charset.displayName())
     }
 
-    decodeStrict(bytes, Charsets.UTF_8)?.let { return it }
+    decodeStrict(bytes, Charsets.UTF_8)?.let {
+        return DecodedText(it, Charsets.UTF_8.displayName())
+    }
 
     return candidateCharsets()
         .mapNotNull { charset -> decodeStrict(bytes, charset)?.let { charset to it } }
         .maxByOrNull { (_, text) -> text.scoreDecodedText() }
-        ?.second
-        ?: String(bytes, Charset.defaultCharset())
+        ?.let { (charset, text) -> DecodedText(text, charset.displayName()) }
+        ?: DecodedText(String(bytes, Charset.defaultCharset()), Charset.defaultCharset().displayName())
 }
+
+internal data class DecodedText(
+    val text: String,
+    val encodingName: String
+)
 
 private fun detectBom(bytes: ByteArray): Pair<Charset, Int>? =
     when {

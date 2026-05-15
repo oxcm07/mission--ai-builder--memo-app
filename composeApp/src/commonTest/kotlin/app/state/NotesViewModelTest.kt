@@ -71,7 +71,8 @@ class NotesViewModelTest {
         viewModel.importTextFile(
             ImportedTextFile(
                 fileName = "meeting-notes.txt",
-                content = "Discuss roadmap\nShip memo app"
+                content = "Discuss roadmap\nShip memo app",
+                encodingName = "x-windows-949"
             )
         )
         advanceUntilIdle()
@@ -80,6 +81,7 @@ class NotesViewModelTest {
         assertEquals("imported-note", imported.id)
         assertEquals("meeting-notes", imported.title)
         assertEquals("Discuss roadmap\nShip memo app", imported.content)
+        assertEquals("x-windows-949", imported.encodingName)
         assertEquals("imported-note", viewModel.state.value.selectedNoteId)
         assertEquals(viewModel.state.value.notes, repository.savedNotes)
     }

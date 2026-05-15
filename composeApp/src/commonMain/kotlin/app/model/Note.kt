@@ -9,7 +9,8 @@ data class Note(
     val content: String,
     val createdAt: String,
     val updatedAt: String,
-    val pinned: Boolean = false
+    val pinned: Boolean = false,
+    val encodingName: String = "UTF-8"
 ) {
     val displayTitle: String
         get() = title.trim()
