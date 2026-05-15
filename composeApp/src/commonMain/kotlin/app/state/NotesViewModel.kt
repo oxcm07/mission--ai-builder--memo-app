@@ -61,13 +61,15 @@ class NotesViewModel(
 
     fun createNote() {
         val now = nowProvider()
+        val folderId = mutableState.value.selectedFolderId ?: DEFAULT_FOLDER_ID
         val note = Note(
             id = idProvider(),
             title = "",
             content = "",
             createdAt = now,
             updatedAt = now,
-            folderId = mutableState.value.selectedFolderId ?: DEFAULT_FOLDER_ID
+            folderId = folderId,
+            sortOrder = nextSortOrder(folderId, mutableState.value.notes)
         )
         mutableState.update {
             it.copy(
@@ -82,6 +84,7 @@ class NotesViewModel(
     fun importTextFile(file: ImportedTextFile) {
         val now = nowProvider()
         val title = file.fileName.substringBeforeLast(".").trim().ifBlank { "가져온 메모" }
+        val folderId = mutableState.value.selectedFolderId ?: DEFAULT_FOLDER_ID
         val note = Note(
             id = idProvider(),
             title = title,
@@ -89,7 +92,8 @@ class NotesViewModel(
             createdAt = now,
             updatedAt = now,
             encodingName = file.encodingName,
-            folderId = mutableState.value.selectedFolderId ?: DEFAULT_FOLDER_ID
+            folderId = folderId,
+            sortOrder = nextSortOrder(folderId, mutableState.value.notes)
         )
         mutableState.update {
             it.copy(
@@ -253,11 +257,49 @@ class NotesViewModel(
 
     fun moveSelectedNoteToFolder(folderId: String) {
         val selectedId = mutableState.value.selectedNoteId ?: return
+        moveNoteToFolder(selectedId, folderId)
+    }
+
+    fun moveNoteToFolder(noteId: String, folderId: String) {
         if (mutableState.value.folders.none { it.id == folderId }) return
 
-        updateNote(selectedId) { note ->
-            note.copy(folderId = folderId, updatedAt = nowProvider())
+        updateNote(noteId) { note ->
+            note.copy(
+                folderId = folderId,
+                sortOrder = nextSortOrder(folderId, mutableState.value.notes),
+                updatedAt = nowProvider()
+            )
         }
+    }
+
+    fun moveNoteInVisibleList(noteId: String, direction: Int) {
+        if (direction == 0) return
+
+        mutableState.update { state ->
+            val visible = state.visibleNotes()
+            val currentIndex = visible.indexOfFirst { it.id == noteId }
+            if (currentIndex == -1) return@update state
+
+            val note = visible[currentIndex]
+            val sameGroupVisible = visible.filter { it.folderId == note.folderId && it.pinned == note.pinned }
+            val groupIndex = sameGroupVisible.indexOfFirst { it.id == noteId }
+            val targetIndex = (groupIndex + direction).coerceIn(0, sameGroupVisible.lastIndex)
+            if (groupIndex == targetIndex) return@update state
+
+            val reordered = sameGroupVisible.toMutableList().apply {
+                add(targetIndex, removeAt(groupIndex))
+            }
+            val orderById = reordered.mapIndexed { index, item -> item.id to index.toLong() }.toMap()
+            state.copy(
+                notes = sortNotes(
+                    state.notes.map { item ->
+                        orderById[item.id]?.let { item.copy(sortOrder = it) } ?: item
+                    }
+                ),
+                saveError = null
+            )
+        }
+        saveDebounced()
     }
 
     fun saveNow() {
@@ -353,6 +395,12 @@ private fun uniqueFolderName(name: String, folders: List<NoteFolder>): String {
     }
     return "$name $index"
 }
+
+private fun nextSortOrder(folderId: String, notes: List<Note>): Long =
+    notes.filter { it.folderId == folderId }
+        .minOfOrNull { it.sortOrder }
+        ?.minus(1)
+        ?: 0
 
 private fun Exception.userMessage(): String =
     message?.takeIf { it.isNotBlank() } ?: this::class.simpleName.orEmpty().ifBlank { "알 수 없는 오류" }

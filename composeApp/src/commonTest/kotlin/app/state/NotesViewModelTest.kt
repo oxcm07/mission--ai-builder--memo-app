@@ -202,10 +202,30 @@ class NotesViewModelTest {
 
     @Test
     fun pinnedNotesSortBeforeRecentlyUpdatedNotes() {
-        val pinnedOld = note(id = "pinned", updatedAt = "2026-05-14T00:00:00Z", pinned = true)
-        val recent = note(id = "recent", updatedAt = "2026-05-15T00:00:00Z")
+        val pinnedOld = note(id = "pinned", updatedAt = "2026-05-14T00:00:00Z", pinned = true, sortOrder = 1)
+        val recent = note(id = "recent", updatedAt = "2026-05-15T00:00:00Z", sortOrder = 0)
 
         assertEquals(listOf("pinned", "recent"), sortNotes(listOf(recent, pinnedOld)).map { it.id })
+    }
+
+    @Test
+    fun moveNoteInVisibleListUpdatesSortOrder() = runTest {
+        val first = note(id = "first", sortOrder = 0)
+        val second = note(id = "second", sortOrder = 1)
+        val repository = MemoryNotesRepository(loadResult = listOf(first, second))
+        val viewModel = NotesViewModel(
+            repository = repository,
+            scope = this,
+            autoSaveDelayMillis = 0
+        )
+
+        viewModel.loadNotes()
+        advanceUntilIdle()
+        viewModel.moveNoteInVisibleList("second", -1)
+        advanceUntilIdle()
+
+        assertEquals(listOf("second", "first"), viewModel.state.value.visibleNotes().map { it.id })
+        assertEquals(viewModel.state.value.notes, repository.savedNotes)
     }
 
     @Test
@@ -236,7 +256,8 @@ class NotesViewModelTest {
         content: String = "Content",
         updatedAt: String = "2026-05-15T00:00:00Z",
         pinned: Boolean = false,
-        folderId: String = "default"
+        folderId: String = "default",
+        sortOrder: Long = 0
     ): Note = Note(
         id = id,
         title = title,
@@ -244,7 +265,8 @@ class NotesViewModelTest {
         createdAt = "2026-05-15T00:00:00Z",
         updatedAt = updatedAt,
         pinned = pinned,
-        folderId = folderId
+        folderId = folderId,
+        sortOrder = sortOrder
     )
 
     private class MemoryNotesRepository(

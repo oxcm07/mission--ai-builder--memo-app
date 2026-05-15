@@ -11,7 +11,8 @@ data class Note(
     val updatedAt: String,
     val pinned: Boolean = false,
     val encodingName: String = "UTF-8",
-    val folderId: String = DEFAULT_FOLDER_ID
+    val folderId: String = DEFAULT_FOLDER_ID,
+    val sortOrder: Long = 0
 ) {
     val displayTitle: String
         get() = title.trim()

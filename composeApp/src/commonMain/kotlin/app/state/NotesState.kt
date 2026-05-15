@@ -40,5 +40,6 @@ fun NotesState.visibleNotes(): List<Note> {
 fun sortNotes(notes: List<Note>): List<Note> =
     notes.sortedWith(
         compareByDescending<Note> { it.pinned }
+            .thenBy { it.sortOrder }
             .thenByDescending { it.updatedAt }
     )

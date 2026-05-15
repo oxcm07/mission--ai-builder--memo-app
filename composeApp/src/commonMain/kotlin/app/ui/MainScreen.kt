@@ -2,6 +2,8 @@ package app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -36,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -46,6 +50,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
@@ -58,6 +64,7 @@ import app.model.NoteFolder
 import app.state.NotesState
 import app.state.selectedNote
 import app.state.visibleNotes
+import kotlin.math.abs
 
 private val AppleYellow = Color(0xFFFFCC00)
 private val SeparatorLight = Color(0xFFD8D8DE)
@@ -88,9 +95,12 @@ fun MainScreen(
     onRequestDeleteFolder: (NoteFolder) -> Unit,
     onConfirmDeleteFolder: () -> Unit,
     onCancelDeleteFolder: () -> Unit,
+    onMoveNoteToFolder: (String, String) -> Unit,
+    onMoveNoteInVisibleList: (String, Int) -> Unit,
     onUpdateTitle: (String) -> Unit,
     onUpdateContent: (String) -> Unit,
     onSearch: (String) -> Unit,
+    onTogglePinned: (String) -> Unit,
     onOpenStickyNote: (String) -> Unit,
     onRequestDelete: (Note) -> Unit,
     onConfirmDelete: () -> Unit,
@@ -108,6 +118,7 @@ fun MainScreen(
     val density = LocalDensity.current
     var folderPaneWidth by remember { mutableStateOf(220.dp) }
     var notesPaneWidth by remember { mutableStateOf(320.dp) }
+    var folderBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
 
     LaunchedEffect(Unit) {
         appFocusRequester.requestFocus()
@@ -178,6 +189,9 @@ fun MainScreen(
                     selectedFolderId = state.selectedFolderId,
                     onSelectFolder = onSelectFolder,
                     onCreateFolder = onCreateFolder,
+                    onFolderBoundsChanged = { folderId, bounds ->
+                        folderBounds = folderBounds + (folderId to bounds)
+                    },
                     modifier = Modifier
                         .width(folderPaneWidth)
                         .fillMaxHeight()
@@ -195,6 +209,22 @@ fun MainScreen(
                     searchFocusRequester = searchFocusRequester,
                     onSearch = onSearch,
                     onSelectNote = onSelectNote,
+                    onTogglePinned = onTogglePinned,
+                    onMoveNote = onMoveNoteInVisibleList,
+                    onNoteDragEnd = { noteId, windowPosition, totalDragY ->
+                        val targetFolderId = windowPosition?.let { position ->
+                            folderBounds.entries.firstOrNull { (_, bounds) -> bounds.contains(position) }?.key
+                        }
+                        val draggedNote = state.notes.firstOrNull { it.id == noteId }
+                        when {
+                            targetFolderId != null && draggedNote?.folderId != targetFolderId -> {
+                                onMoveNoteToFolder(noteId, targetFolderId)
+                            }
+                            abs(totalDragY) > 36f -> {
+                                onMoveNoteInVisibleList(noteId, if (totalDragY < 0f) -1 else 1)
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .width(notesPaneWidth)
                         .fillMaxHeight()
@@ -402,6 +432,7 @@ private fun FolderPane(
     selectedFolderId: String?,
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
+    onFolderBoundsChanged: (String, Rect) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var newFolderName by remember { mutableStateOf("") }
@@ -417,6 +448,7 @@ private fun FolderPane(
             name = "전체 메모",
             count = notesCount,
             selected = selectedFolderId == null,
+            onBoundsChanged = { onFolderBoundsChanged(DEFAULT_FOLDER_ID, it) },
             onClick = { onSelectFolder(null) }
         )
         Spacer(Modifier.height(8.dp))
@@ -425,6 +457,7 @@ private fun FolderPane(
                 name = folder.name,
                 count = countsByFolder[folder.id] ?: 0,
                 selected = selectedFolderId == folder.id,
+                onBoundsChanged = { onFolderBoundsChanged(folder.id, it) },
                 onClick = { onSelectFolder(folder.id) }
             )
         }
@@ -472,6 +505,7 @@ private fun FolderRow(
     name: String,
     count: Int,
     selected: Boolean,
+    onBoundsChanged: (Rect) -> Unit = {},
     onClick: () -> Unit
 ) {
     Surface(
@@ -480,6 +514,7 @@ private fun FolderRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
+            .onGloballyPositioned { onBoundsChanged(it.boundsInWindow()) }
             .clickable(onClick = onClick)
     ) {
         Row(
