@@ -125,6 +125,7 @@ fun MainScreen(
     var folderPaneWidth by remember { mutableStateOf(220.dp) }
     var notesPaneWidth by remember { mutableStateOf(320.dp) }
     var folderBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
+    var folderPaneBounds by remember { mutableStateOf(Rect.Zero) }
     var rootBounds by remember { mutableStateOf(Rect.Zero) }
     var draggedNote by remember { mutableStateOf<Note?>(null) }
     var draggedNotePosition by remember { mutableStateOf<Offset?>(null) }
@@ -204,6 +205,9 @@ fun MainScreen(
                     onSelectFolder = onSelectFolder,
                     onCreateFolder = onCreateFolder,
                     onMoveFolder = onMoveFolderInList,
+                    onFolderPaneBoundsChanged = { bounds ->
+                        folderPaneBounds = bounds
+                    },
                     onFolderBoundsChanged = { folderId, bounds ->
                         folderBounds = folderBounds + (folderId to bounds)
                     },
@@ -234,7 +238,11 @@ fun MainScreen(
                     },
                     onNoteDragEnd = { noteId, windowPosition, totalDragY ->
                         val targetFolderId = windowPosition?.let { position ->
-                            folderBounds.entries.firstOrNull { (_, bounds) -> bounds.contains(position) }?.key
+                            findDropTargetFolderId(
+                                position = position,
+                                folderBounds = folderBounds,
+                                folderPaneBounds = folderPaneBounds
+                            )
                         }
                         val noteBeingDragged = state.notes.firstOrNull { it.id == noteId }
                         when {
@@ -297,8 +305,8 @@ fun MainScreen(
                     note = previewNote,
                     modifier = Modifier.offset {
                         IntOffset(
-                            x = (previewPosition.x - rootBounds.left + 12f).roundToInt(),
-                            y = (previewPosition.y - rootBounds.top + 12f).roundToInt()
+                            x = (previewPosition.x - rootBounds.left).roundToInt(),
+                            y = (previewPosition.y - rootBounds.top - 28f).roundToInt()
                         )
                     }
                 )
@@ -353,6 +361,7 @@ private fun DraggedNotePreview(
         shadowElevation = 10.dp,
         modifier = modifier
             .width(260.dp)
+            .offset(x = (-130).dp)
             .graphicsLayer(alpha = 0.72f)
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 9.dp)) {
@@ -505,6 +514,7 @@ private fun FolderPane(
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
     onMoveFolder: (String, Int) -> Unit,
+    onFolderPaneBoundsChanged: (Rect) -> Unit,
     onFolderBoundsChanged: (String, Rect) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -514,7 +524,9 @@ private fun FolderPane(
     }
 
     Column(
-        modifier = modifier.padding(16.dp)
+        modifier = modifier
+            .onGloballyPositioned { onFolderPaneBoundsChanged(it.boundsInWindow()) }
+            .padding(16.dp)
     ) {
         Spacer(Modifier.height(4.dp))
         FolderRow(
@@ -532,7 +544,7 @@ private fun FolderPane(
                 selected = selectedFolderId == folder.id,
                 onBoundsChanged = { onFolderBoundsChanged(folder.id, it) },
                 onClick = { onSelectFolder(folder.id) },
-                onDragEnd = { totalDragY ->
+                onDragHandleEnd = { totalDragY ->
                     if (abs(totalDragY) > 24f) {
                         onMoveFolder(folder.id, if (totalDragY < 0f) -1 else 1)
                     }
@@ -586,7 +598,7 @@ private fun FolderRow(
     selected: Boolean,
     onBoundsChanged: (Rect) -> Unit = {},
     onClick: () -> Unit,
-    onDragEnd: (Float) -> Unit = {}
+    onDragHandleEnd: (Float) -> Unit = {}
 ) {
     var totalDragY by remember { mutableFloatStateOf(0f) }
 
@@ -597,19 +609,6 @@ private fun FolderRow(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .onGloballyPositioned { onBoundsChanged(it.boundsInWindow()) }
-            .pointerInput(name) {
-                detectDragGestures(
-                    onDragStart = { totalDragY = 0f },
-                    onDragEnd = {
-                        onDragEnd(totalDragY)
-                        totalDragY = 0f
-                    },
-                    onDragCancel = { totalDragY = 0f }
-                ) { change, dragAmount ->
-                    change.consume()
-                    totalDragY += dragAmount.y
-                }
-            }
             .clickable(onClick = onClick)
     ) {
         Row(
@@ -628,6 +627,26 @@ private fun FolderRow(
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (name != "전체 메모") {
+                Text(
+                    text = "  =",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    modifier = Modifier.pointerInput(name) {
+                        detectDragGestures(
+                            onDragStart = { totalDragY = 0f },
+                            onDragEnd = {
+                                onDragHandleEnd(totalDragY)
+                                totalDragY = 0f
+                            },
+                            onDragCancel = { totalDragY = 0f }
+                        ) { change, dragAmount ->
+                            change.consume()
+                            totalDragY += dragAmount.y
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -704,3 +723,27 @@ private fun separatorColor(darkMode: Boolean): Color =
 
 private fun String.lineCount(): Int =
     if (isEmpty()) 0 else lineSequence().count()
+
+private fun findDropTargetFolderId(
+    position: Offset,
+    folderBounds: Map<String, Rect>,
+    folderPaneBounds: Rect
+): String? {
+    val expandedMatch = folderBounds.entries.firstOrNull { (_, bounds) ->
+        bounds
+            .copy(left = folderPaneBounds.left, right = folderPaneBounds.right)
+            .inflate(16f)
+            .contains(position)
+    }
+    if (expandedMatch != null) return expandedMatch.key
+
+    if (!folderPaneBounds.inflate(12f).contains(position)) return null
+
+    return folderBounds.entries
+        .filter { (_, bounds) -> position.y >= bounds.top - 28f && position.y <= bounds.bottom + 28f }
+        .minByOrNull { (_, bounds) ->
+            val centerY = (bounds.top + bounds.bottom) / 2f
+            abs(position.y - centerY)
+        }
+        ?.key
+}
