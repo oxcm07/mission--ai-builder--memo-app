@@ -14,8 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import app.App
 import app.state.NotesViewModel
 import app.ui.StickyNoteWindow
@@ -27,6 +27,7 @@ fun main() = application {
     val repository = remember { DesktopNotesRepository() }
     val viewModel = remember(repository) { NotesViewModel(repository, scope) }
     val state by viewModel.state.collectAsState()
+    val mainWindowState = rememberWindowState(size = DpSize(1100.dp, 720.dp))
     var stickyNoteIds by remember { mutableStateOf(emptyList<String>()) }
     val existingNoteIds = state.notes.map { it.id }.toSet()
 
@@ -37,7 +38,7 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "Memo",
-        state = WindowState(size = DpSize(1100.dp, 720.dp))
+        state = mainWindowState
     ) {
         window.minimumSize = Dimension(800, 500)
         App(
@@ -55,7 +56,7 @@ fun main() = application {
                 Window(
                     onCloseRequest = { stickyNoteIds = stickyNoteIds - noteId },
                     title = note.displayTitle,
-                    state = remember { WindowState(size = DpSize(320.dp, 380.dp)) },
+                    state = rememberWindowState(size = DpSize(320.dp, 380.dp)),
                     alwaysOnTop = true
                 ) {
                     MaterialTheme(
