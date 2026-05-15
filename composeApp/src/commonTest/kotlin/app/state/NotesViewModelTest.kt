@@ -1,5 +1,6 @@
 package app.state
 
+import app.model.DEFAULT_FOLDER_ID
 import app.model.Note
 import app.model.NoteFolder
 import app.repository.NotesRepository
@@ -155,6 +156,36 @@ class NotesViewModelTest {
         val updated = viewModel.state.value.notes.single()
         assertEquals("folder-work", updated.folderId)
         assertEquals(repository.savedNotes, viewModel.state.value.notes)
+    }
+
+    @Test
+    fun confirmDeleteFolderMovesNotesToDefaultFolder() = runTest {
+        val folder = NoteFolder("folder-work", "Work", "2026-05-15T00:00:00Z")
+        val workNote = note(id = "work-note", folderId = folder.id)
+        val repository = MemoryNotesRepository(
+            loadResult = listOf(workNote),
+            loadFoldersResult = listOf(folder)
+        )
+        val viewModel = NotesViewModel(
+            repository = repository,
+            scope = this,
+            nowProvider = { "2026-05-15T14:00:00Z" },
+            autoSaveDelayMillis = 0
+        )
+
+        viewModel.loadNotes()
+        advanceUntilIdle()
+        viewModel.selectFolder(folder.id)
+        viewModel.requestDeleteFolder(folder)
+        viewModel.confirmDeleteFolder()
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.state.value.selectedFolderId)
+        assertEquals(null, viewModel.state.value.pendingDeleteFolder)
+        assertEquals(DEFAULT_FOLDER_ID, viewModel.state.value.notes.single().folderId)
+        assertEquals(false, viewModel.state.value.folders.any { it.id == folder.id })
+        assertEquals(viewModel.state.value.notes, repository.savedNotes)
+        assertEquals(viewModel.state.value.folders, repository.savedFolders)
     }
 
     @Test

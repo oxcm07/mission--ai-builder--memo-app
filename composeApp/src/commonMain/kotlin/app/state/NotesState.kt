@@ -12,6 +12,7 @@ data class NotesState(
     val isSaving: Boolean = false,
     val saveError: String? = null,
     val pendingDeleteNote: Note? = null,
+    val pendingDeleteFolder: NoteFolder? = null,
     val hasLoaded: Boolean = false
 )
 

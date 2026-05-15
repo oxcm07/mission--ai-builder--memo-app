@@ -49,6 +49,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.model.DEFAULT_FOLDER_ID
 import app.model.Note
 import app.model.NoteFolder
 import app.state.NotesState
@@ -80,6 +81,9 @@ fun MainScreen(
     onSelectNote: (String) -> Unit,
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
+    onRequestDeleteFolder: (NoteFolder) -> Unit,
+    onConfirmDeleteFolder: () -> Unit,
+    onCancelDeleteFolder: () -> Unit,
     onMoveSelectedNoteToFolder: (String) -> Unit,
     onUpdateTitle: (String) -> Unit,
     onUpdateContent: (String) -> Unit,
@@ -168,6 +172,7 @@ fun MainScreen(
                     selectedFolderId = state.selectedFolderId,
                     onSelectFolder = onSelectFolder,
                     onCreateFolder = onCreateFolder,
+                    onRequestDeleteFolder = onRequestDeleteFolder,
                     modifier = Modifier
                         .width(220.dp)
                         .fillMaxHeight()
@@ -228,6 +233,14 @@ fun MainScreen(
             note = note,
             onConfirm = onConfirmDelete,
             onCancel = onCancelDelete
+        )
+    }
+
+    state.pendingDeleteFolder?.let { folder ->
+        ConfirmFolderDeleteDialog(
+            folder = folder,
+            onConfirm = onConfirmDeleteFolder,
+            onCancel = onCancelDeleteFolder
         )
     }
 }
@@ -365,6 +378,7 @@ private fun FolderPane(
     selectedFolderId: String?,
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
+    onRequestDeleteFolder: (NoteFolder) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var newFolderName by remember { mutableStateOf("") }
@@ -388,7 +402,9 @@ private fun FolderPane(
                 name = folder.name,
                 count = countsByFolder[folder.id] ?: 0,
                 selected = selectedFolderId == folder.id,
-                onClick = { onSelectFolder(folder.id) }
+                canDelete = folder.id != DEFAULT_FOLDER_ID,
+                onClick = { onSelectFolder(folder.id) },
+                onDelete = { onRequestDeleteFolder(folder) }
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -435,7 +451,9 @@ private fun FolderRow(
     name: String,
     count: Int,
     selected: Boolean,
-    onClick: () -> Unit
+    canDelete: Boolean = false,
+    onClick: () -> Unit,
+    onDelete: () -> Unit = {}
 ) {
     Surface(
         color = if (selected) AppleYellow.copy(alpha = 0.22f) else Color.Transparent,
@@ -461,6 +479,11 @@ private fun FolderRow(
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (canDelete) {
+                TextButton(onClick = onDelete) {
+                    Text("삭제", fontSize = 12.sp)
+                }
+            }
         }
     }
 }

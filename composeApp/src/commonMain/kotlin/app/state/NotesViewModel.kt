@@ -140,6 +140,52 @@ class NotesViewModel(
         saveFoldersNow()
     }
 
+    fun requestDeleteFolder(folder: NoteFolder) {
+        if (folder.id == DEFAULT_FOLDER_ID) return
+        mutableState.update { it.copy(pendingDeleteFolder = folder) }
+    }
+
+    fun confirmDeleteFolder() {
+        val folder = mutableState.value.pendingDeleteFolder ?: return
+        if (folder.id == DEFAULT_FOLDER_ID) {
+            mutableState.update { it.copy(pendingDeleteFolder = null) }
+            return
+        }
+
+        mutableState.update { state ->
+            val notes = sortNotes(
+                state.notes.map { note ->
+                    if (note.folderId == folder.id) {
+                        note.copy(folderId = DEFAULT_FOLDER_ID, updatedAt = nowProvider())
+                    } else {
+                        note
+                    }
+                }
+            )
+            val selectedFolderId = if (state.selectedFolderId == folder.id) null else state.selectedFolderId
+            val nextState = state.copy(
+                notes = notes,
+                folders = state.folders.filterNot { it.id == folder.id },
+                selectedFolderId = selectedFolderId,
+                pendingDeleteFolder = null,
+                saveError = null
+            )
+            val selectedStillVisible = nextState.visibleNotes().any { it.id == state.selectedNoteId }
+            nextState.copy(
+                selectedNoteId = if (selectedStillVisible) {
+                    state.selectedNoteId
+                } else {
+                    nextState.visibleNotes().firstOrNull()?.id
+                }
+            )
+        }
+        saveNow()
+    }
+
+    fun cancelDeleteFolder() {
+        mutableState.update { it.copy(pendingDeleteFolder = null) }
+    }
+
     fun updateSelectedNoteTitle(title: String) {
         val selectedId = mutableState.value.selectedNoteId ?: return
         updateNoteTitle(selectedId, title)
