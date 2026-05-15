@@ -3,7 +3,6 @@ package app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,9 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -26,45 +23,36 @@ import app.model.Note
 private val StickyYellow = Color(0xFFFFF4B8)
 private val StickyText = Color(0xFF2B2410)
 private val StickyMutedText = Color(0xFF7A6A2C)
+private val StickyDark = Color(0xFF2B2616)
+private val StickyDarkText = Color(0xFFFFF4B8)
+private val StickyDarkMutedText = Color(0xFFD8C779)
 
 @Composable
 fun StickyNoteWindow(
     note: Note,
+    darkMode: Boolean,
     editorFontSizeSp: Int,
     fontFamily: FontFamily,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val background = if (darkMode) StickyDark else StickyYellow
+    val textColor = if (darkMode) StickyDarkText else StickyText
+    val mutedTextColor = if (darkMode) StickyDarkMutedText else StickyMutedText
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(StickyYellow)
+            .background(background)
             .padding(14.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Memo",
-                color = StickyMutedText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onClose) {
-                Text("닫기", color = StickyMutedText, fontSize = 12.sp)
-            }
-        }
-
         BasicTextField(
             value = note.title,
             onValueChange = onTitleChange,
             singleLine = true,
             textStyle = TextStyle(
-                color = StickyText,
+                color = textColor,
                 fontSize = (editorFontSizeSp + 4).sp,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold
@@ -74,7 +62,7 @@ fun StickyNoteWindow(
                     if (note.title.isBlank()) {
                         Text(
                             text = "제목",
-                            color = StickyMutedText,
+                            color = mutedTextColor,
                             fontSize = (editorFontSizeSp + 4).sp,
                             fontFamily = fontFamily,
                             fontWeight = FontWeight.Bold
@@ -92,7 +80,7 @@ fun StickyNoteWindow(
             value = note.content,
             onValueChange = onContentChange,
             textStyle = TextStyle(
-                color = StickyText,
+                color = textColor,
                 fontSize = editorFontSizeSp.sp,
                 fontFamily = fontFamily,
                 lineHeight = (editorFontSizeSp + 7).sp
@@ -100,7 +88,12 @@ fun StickyNoteWindow(
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxSize()) {
                     if (note.content.isBlank()) {
-                        Text("내용", color = StickyMutedText, fontSize = editorFontSizeSp.sp, fontFamily = fontFamily)
+                        Text(
+                            text = "내용",
+                            color = mutedTextColor,
+                            fontSize = editorFontSizeSp.sp,
+                            fontFamily = fontFamily
+                        )
                     }
                     innerTextField()
                 }

@@ -1,7 +1,12 @@
 package com.back
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,10 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -27,7 +31,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
@@ -98,6 +105,7 @@ fun main() = application {
 
         Column(Modifier.fillMaxSize()) {
             WindowsTitleBar(
+                title = "Memo",
                 darkMode = darkMode,
                 onDragStart = {
                     if (window.extendedState and Frame.MAXIMIZED_BOTH != Frame.MAXIMIZED_BOTH) {
@@ -106,32 +114,14 @@ fun main() = application {
                     }
                 },
                 onDrag = {
-                    val startPointer = dragState.startPointer
-                    val startWindowLocation = dragState.startWindowLocation
-                    if (
-                        startPointer != null &&
-                        startWindowLocation != null &&
-                        window.extendedState and Frame.MAXIMIZED_BOTH != Frame.MAXIMIZED_BOTH
-                    ) {
-                        val currentPointer = MouseInfo.getPointerInfo().location
-                        window.setLocation(
-                            startWindowLocation.x + currentPointer.x - startPointer.x,
-                            startWindowLocation.y + currentPointer.y - startPointer.y
-                        )
-                    }
+                    moveWindowFromDragState(window, dragState)
                 },
                 onDragEnd = {
                     dragState.startPointer = null
                     dragState.startWindowLocation = null
                 },
                 onMinimize = { window.isMinimized = true },
-                onToggleMaximize = {
-                    window.extendedState = if (window.extendedState and Frame.MAXIMIZED_BOTH == Frame.MAXIMIZED_BOTH) {
-                        Frame.NORMAL
-                    } else {
-                        Frame.MAXIMIZED_BOTH
-                    }
-                },
+                onToggleMaximize = { toggleMaximize(window) },
                 onClose = ::exitApplication
             )
             App(
@@ -161,23 +151,55 @@ fun main() = application {
                     onCloseRequest = { stickyNoteIds = stickyNoteIds - noteId },
                     title = note.displayTitle,
                     state = rememberWindowState(size = DpSize(320.dp, 380.dp)),
-                    alwaysOnTop = true
+                    alwaysOnTop = true,
+                    undecorated = true
                 ) {
+                    val stickyDragState = remember { WindowDragState() }
+
                     MaterialTheme(
-                        colorScheme = lightColorScheme(
-                            primary = Color(0xFFFFCC00),
-                            surface = Color(0xFFFFF4B8),
-                            background = Color(0xFFFFF4B8)
-                        )
+                        colorScheme = if (darkMode) {
+                            darkColorScheme(
+                                primary = Color(0xFFFFCC00),
+                                surface = Color(0xFF2B2616),
+                                background = Color(0xFF2B2616)
+                            )
+                        } else {
+                            lightColorScheme(
+                                primary = Color(0xFFFFCC00),
+                                surface = Color(0xFFFFF4B8),
+                                background = Color(0xFFFFF4B8)
+                            )
+                        }
                     ) {
-                        StickyNoteWindow(
-                            note = note,
-                            editorFontSizeSp = editorFontSizeSp,
-                            fontFamily = appFontFamily,
-                            onTitleChange = { viewModel.updateNoteTitle(noteId, it) },
-                            onContentChange = { viewModel.updateNoteContent(noteId, it) },
-                            onClose = { stickyNoteIds = stickyNoteIds - noteId }
-                        )
+                        Column(Modifier.fillMaxSize()) {
+                            WindowsTitleBar(
+                                title = note.displayTitle,
+                                darkMode = darkMode,
+                                onDragStart = {
+                                    stickyDragState.startPointer = MouseInfo.getPointerInfo().location
+                                    stickyDragState.startWindowLocation = window.location
+                                },
+                                onDrag = {
+                                    moveWindowFromDragState(window, stickyDragState)
+                                },
+                                onDragEnd = {
+                                    stickyDragState.startPointer = null
+                                    stickyDragState.startWindowLocation = null
+                                },
+                                onMinimize = { window.isMinimized = true },
+                                onToggleMaximize = { toggleMaximize(window) },
+                                onClose = { stickyNoteIds = stickyNoteIds - noteId }
+                            )
+                            StickyNoteWindow(
+                                note = note,
+                                darkMode = darkMode,
+                                editorFontSizeSp = editorFontSizeSp,
+                                fontFamily = appFontFamily,
+                                onTitleChange = { viewModel.updateNoteTitle(noteId, it) },
+                                onContentChange = { viewModel.updateNoteContent(noteId, it) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -188,6 +210,26 @@ fun main() = application {
 private class WindowDragState {
     var startPointer: Point? = null
     var startWindowLocation: Point? = null
+}
+
+private fun moveWindowFromDragState(window: java.awt.Window, dragState: WindowDragState) {
+    val startPointer = dragState.startPointer
+    val startWindowLocation = dragState.startWindowLocation
+    if (startPointer != null && startWindowLocation != null) {
+        val currentPointer = MouseInfo.getPointerInfo().location
+        window.setLocation(
+            startWindowLocation.x + currentPointer.x - startPointer.x,
+            startWindowLocation.y + currentPointer.y - startPointer.y
+        )
+    }
+}
+
+private fun toggleMaximize(frame: Frame) {
+    frame.extendedState = if (frame.extendedState and Frame.MAXIMIZED_BOTH == Frame.MAXIMIZED_BOTH) {
+        Frame.NORMAL
+    } else {
+        Frame.MAXIMIZED_BOTH
+    }
 }
 
 private fun availableSystemFontNames(): List<String> {
@@ -211,6 +253,7 @@ private fun systemFontFamily(fontName: String): FontFamily = FontFamily(fontName
 
 @Composable
 private fun WindowsTitleBar(
+    title: String,
     darkMode: Boolean,
     onDragStart: () -> Unit,
     onDrag: () -> Unit,
@@ -221,7 +264,7 @@ private fun WindowsTitleBar(
 ) {
     val background = if (darkMode) Color(0xFF202020) else Color(0xFFF3F3F3)
     val foreground = if (darkMode) Color(0xFFF5F5F5) else Color(0xFF202020)
-    val hover = if (darkMode) Color(0xFF343434) else Color(0xFFE7E7E7)
+    val buttonHover = if (darkMode) Color(0xFF343434) else Color(0xFFE7E7E7)
 
     Row(
         modifier = Modifier
@@ -247,46 +290,81 @@ private fun WindowsTitleBar(
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
-                text = "Memo",
+                text = title,
                 color = foreground,
                 fontSize = 12.sp
             )
         }
-        WindowButton(text = "_", foreground = foreground, hover = hover, onClick = onMinimize)
-        WindowButton(text = "□", foreground = foreground, hover = hover, onClick = onToggleMaximize)
-        WindowButton(
-            text = "X",
-            foreground = foreground,
-            hover = Color(0xFFE81123),
-            onClick = onClose
-        )
+        WindowButton(type = WindowButtonType.Minimize, foreground = foreground, hover = buttonHover, onClick = onMinimize)
+        WindowButton(type = WindowButtonType.Maximize, foreground = foreground, hover = buttonHover, onClick = onToggleMaximize)
+        WindowButton(type = WindowButtonType.Close, foreground = foreground, hover = Color(0xFFE81123), onClick = onClose)
     }
+}
+
+private enum class WindowButtonType {
+    Minimize,
+    Maximize,
+    Close
 }
 
 @Composable
 private fun WindowButton(
-    text: String,
+    type: WindowButtonType,
     foreground: Color,
     hover: Color,
     onClick: () -> Unit
 ) {
-    TextButton(
-        onClick = onClick,
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val iconColor = if (type == WindowButtonType.Close && hovered) Color.White else foreground
+
+    Box(
         modifier = Modifier
             .width(46.dp)
-            .fillMaxHeight(),
-        colors = ButtonDefaults.textButtonColors(
-            contentColor = foreground,
-            containerColor = Color.Transparent
-        )
+            .fillMaxHeight()
+            .background(if (hovered) hover else Color.Transparent)
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = text, fontSize = 12.sp, color = foreground)
+        Canvas(Modifier.width(12.dp).height(12.dp)) {
+            val strokeWidth = 1.2f
+            when (type) {
+                WindowButtonType.Minimize -> {
+                    drawLine(
+                        color = iconColor,
+                        start = Offset(1f, size.height / 2f),
+                        end = Offset(size.width - 1f, size.height / 2f),
+                        strokeWidth = strokeWidth
+                    )
+                }
+                WindowButtonType.Maximize -> {
+                    drawRect(
+                        color = iconColor,
+                        topLeft = Offset(2.2f, 2.2f),
+                        size = Size(size.width - 4.4f, size.height - 4.4f),
+                        style = Stroke(width = strokeWidth)
+                    )
+                }
+                WindowButtonType.Close -> {
+                    drawLine(
+                        color = iconColor,
+                        start = Offset(2f, 2f),
+                        end = Offset(size.width - 2f, size.height - 2f),
+                        strokeWidth = strokeWidth
+                    )
+                    drawLine(
+                        color = iconColor,
+                        start = Offset(size.width - 2f, 2f),
+                        end = Offset(2f, size.height - 2f),
+                        strokeWidth = strokeWidth
+                    )
+                }
+            }
         }
     }
 }
