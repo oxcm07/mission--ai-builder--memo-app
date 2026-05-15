@@ -1,9 +1,12 @@
 package app.state
 
 import app.model.Note
+import app.model.NoteFolder
 
 data class NotesState(
     val notes: List<Note> = emptyList(),
+    val folders: List<NoteFolder> = emptyList(),
+    val selectedFolderId: String? = null,
     val selectedNoteId: String? = null,
     val searchQuery: String = "",
     val isSaving: Boolean = false,
@@ -17,10 +20,14 @@ val NotesState.selectedNote: Note?
 
 fun NotesState.visibleNotes(): List<Note> {
     val query = searchQuery.trim()
+    val folderFiltered = selectedFolderId?.let { folderId ->
+        notes.filter { it.folderId == folderId }
+    } ?: notes
+
     val filtered = if (query.isEmpty()) {
-        notes
+        folderFiltered
     } else {
-        notes.filter { note ->
+        folderFiltered.filter { note ->
             note.title.contains(query, ignoreCase = true) ||
                 note.content.contains(query, ignoreCase = true)
         }

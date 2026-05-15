@@ -1,6 +1,7 @@
 package app.state
 
 import app.model.Note
+import app.model.NoteFolder
 import app.repository.NotesRepository
 import app.util.ImportedTextFile
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -100,6 +101,63 @@ class NotesViewModelTest {
     }
 
     @Test
+    fun visibleNotesFiltersSelectedFolder() {
+        val personal = note(id = "personal", folderId = "folder-personal")
+        val work = note(id = "work", folderId = "folder-work")
+        val state = NotesState(
+            notes = listOf(personal, work),
+            selectedFolderId = "folder-work"
+        )
+
+        assertEquals(listOf("work"), state.visibleNotes().map { it.id })
+    }
+
+    @Test
+    fun createFolderAddsAndSelectsFolder() = runTest {
+        val repository = MemoryNotesRepository()
+        val viewModel = NotesViewModel(
+            repository = repository,
+            scope = this,
+            idProvider = { "folder-work" },
+            nowProvider = { "2026-05-15T14:00:00Z" },
+            autoSaveDelayMillis = 0
+        )
+
+        viewModel.loadNotes()
+        advanceUntilIdle()
+        viewModel.createFolder("Work")
+        advanceUntilIdle()
+
+        assertEquals("folder-work", viewModel.state.value.selectedFolderId)
+        assertEquals("Work", viewModel.state.value.folders.last().name)
+        assertEquals(viewModel.state.value.folders, repository.savedFolders)
+    }
+
+    @Test
+    fun moveSelectedNoteToFolderUpdatesNoteFolder() = runTest {
+        val note = note(id = "note-1")
+        val repository = MemoryNotesRepository(
+            loadResult = listOf(note),
+            loadFoldersResult = listOf(NoteFolder("folder-work", "Work", "2026-05-15T00:00:00Z"))
+        )
+        val viewModel = NotesViewModel(
+            repository = repository,
+            scope = this,
+            nowProvider = { "2026-05-15T14:00:00Z" },
+            autoSaveDelayMillis = 0
+        )
+
+        viewModel.loadNotes()
+        advanceUntilIdle()
+        viewModel.moveSelectedNoteToFolder("folder-work")
+        advanceUntilIdle()
+
+        val updated = viewModel.state.value.notes.single()
+        assertEquals("folder-work", updated.folderId)
+        assertEquals(repository.savedNotes, viewModel.state.value.notes)
+    }
+
+    @Test
     fun blankTitleUsesFirstContentLineForDisplayTitle() {
         val note = note(
             id = "note-1",
@@ -146,25 +204,35 @@ class NotesViewModelTest {
         title: String = "Title",
         content: String = "Content",
         updatedAt: String = "2026-05-15T00:00:00Z",
-        pinned: Boolean = false
+        pinned: Boolean = false,
+        folderId: String = "default"
     ): Note = Note(
         id = id,
         title = title,
         content = content,
         createdAt = "2026-05-15T00:00:00Z",
         updatedAt = updatedAt,
-        pinned = pinned
+        pinned = pinned,
+        folderId = folderId
     )
 
     private class MemoryNotesRepository(
-        private val loadResult: List<Note> = emptyList()
+        private val loadResult: List<Note> = emptyList(),
+        private val loadFoldersResult: List<NoteFolder> = emptyList()
     ) : NotesRepository {
         var savedNotes: List<Note> = emptyList()
+        var savedFolders: List<NoteFolder> = emptyList()
 
         override suspend fun loadNotes(): List<Note> = loadResult
 
         override suspend fun saveNotes(notes: List<Note>) {
             savedNotes = notes
+        }
+
+        override suspend fun loadFolders(): List<NoteFolder> = loadFoldersResult
+
+        override suspend fun saveFolders(folders: List<NoteFolder>) {
+            savedFolders = folders
         }
     }
 }

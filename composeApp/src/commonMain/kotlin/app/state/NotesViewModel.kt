@@ -1,6 +1,9 @@
 package app.state
 
+import app.model.DEFAULT_FOLDER_ID
 import app.model.Note
+import app.model.NoteFolder
+import app.model.defaultNoteFolder
 import app.repository.NotesRepository
 import app.util.Debouncer
 import app.util.ImportedTextFile
@@ -27,10 +30,17 @@ class NotesViewModel(
     fun loadNotes() {
         scope.launch {
             try {
-                val loaded = sortNotes(repository.loadNotes())
+                val loaded = sortNotes(
+                    repository.loadNotes().map { note ->
+                        if (note.folderId.isBlank()) note.copy(folderId = DEFAULT_FOLDER_ID) else note
+                    }
+                )
+                val folders = normalizeFolders(repository.loadFolders(), loaded)
                 mutableState.update {
                     it.copy(
                         notes = loaded,
+                        folders = folders,
+                        selectedFolderId = null,
                         selectedNoteId = loaded.firstOrNull()?.id,
                         saveError = null,
                         hasLoaded = true
@@ -56,7 +66,8 @@ class NotesViewModel(
             title = "",
             content = "",
             createdAt = now,
-            updatedAt = now
+            updatedAt = now,
+            folderId = mutableState.value.selectedFolderId ?: DEFAULT_FOLDER_ID
         )
         mutableState.update {
             it.copy(
@@ -77,7 +88,8 @@ class NotesViewModel(
             content = file.content,
             createdAt = now,
             updatedAt = now,
-            encodingName = file.encodingName
+            encodingName = file.encodingName,
+            folderId = mutableState.value.selectedFolderId ?: DEFAULT_FOLDER_ID
         )
         mutableState.update {
             it.copy(
@@ -91,6 +103,41 @@ class NotesViewModel(
 
     fun selectNote(id: String) {
         mutableState.update { it.copy(selectedNoteId = id) }
+    }
+
+    fun selectFolder(folderId: String?) {
+        mutableState.update { state ->
+            val nextState = state.copy(selectedFolderId = folderId, searchQuery = "")
+            val selectedStillVisible = nextState.visibleNotes().any { it.id == state.selectedNoteId }
+            nextState.copy(
+                selectedNoteId = if (selectedStillVisible) {
+                    state.selectedNoteId
+                } else {
+                    nextState.visibleNotes().firstOrNull()?.id
+                }
+            )
+        }
+    }
+
+    fun createFolder(name: String) {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return
+
+        val now = nowProvider()
+        val folder = NoteFolder(
+            id = idProvider(),
+            name = uniqueFolderName(trimmedName, mutableState.value.folders),
+            createdAt = now
+        )
+        mutableState.update {
+            it.copy(
+                folders = it.folders + folder,
+                selectedFolderId = folder.id,
+                selectedNoteId = null,
+                saveError = null
+            )
+        }
+        saveFoldersNow()
     }
 
     fun updateSelectedNoteTitle(title: String) {
@@ -158,10 +205,20 @@ class NotesViewModel(
         }
     }
 
+    fun moveSelectedNoteToFolder(folderId: String) {
+        val selectedId = mutableState.value.selectedNoteId ?: return
+        if (mutableState.value.folders.none { it.id == folderId }) return
+
+        updateNote(selectedId) { note ->
+            note.copy(folderId = folderId, updatedAt = nowProvider())
+        }
+    }
+
     fun saveNow() {
         debouncer.cancel()
         scope.launch {
             saveCurrentNotes()
+            saveCurrentFolders()
         }
     }
 
@@ -185,6 +242,12 @@ class NotesViewModel(
         }
     }
 
+    private fun saveFoldersNow() {
+        scope.launch {
+            saveCurrentFolders()
+        }
+    }
+
     private suspend fun saveCurrentNotes() {
         val notes = mutableState.value.notes
         mutableState.update { it.copy(isSaving = true, saveError = null) }
@@ -200,6 +263,49 @@ class NotesViewModel(
             }
         }
     }
+
+    private suspend fun saveCurrentFolders() {
+        val folders = mutableState.value.folders
+        try {
+            repository.saveFolders(folders)
+        } catch (exception: Exception) {
+            mutableState.update {
+                it.copy(saveError = "폴더를 저장하지 못했습니다: ${exception.userMessage()}")
+            }
+        }
+    }
+}
+
+private fun normalizeFolders(folders: List<NoteFolder>, notes: List<Note>): List<NoteFolder> {
+    val defaultFolder = defaultNoteFolder()
+    val foldersById = (listOf(defaultFolder) + folders)
+        .filter { it.id.isNotBlank() && it.name.isNotBlank() }
+        .distinctBy { it.id }
+        .associateBy { it.id }
+        .toMutableMap()
+
+    notes.map { it.folderId }
+        .filter { it.isNotBlank() && it !in foldersById }
+        .forEach { folderId ->
+            foldersById[folderId] = NoteFolder(
+                id = folderId,
+                name = "폴더",
+                createdAt = defaultFolder.createdAt
+            )
+        }
+
+    return foldersById.values.toList()
+}
+
+private fun uniqueFolderName(name: String, folders: List<NoteFolder>): String {
+    val existingNames = folders.map { it.name }.toSet()
+    if (name !in existingNames) return name
+
+    var index = 2
+    while ("$name $index" in existingNames) {
+        index += 1
+    }
+    return "$name $index"
 }
 
 private fun Exception.userMessage(): String =

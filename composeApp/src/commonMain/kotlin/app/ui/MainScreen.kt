@@ -1,6 +1,7 @@
 package app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -42,9 +44,11 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.model.Note
+import app.model.NoteFolder
 import app.state.NotesState
 import app.state.selectedNote
 import app.state.visibleNotes
@@ -71,6 +75,9 @@ fun MainScreen(
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
     onSelectNote: (String) -> Unit,
+    onSelectFolder: (String?) -> Unit,
+    onCreateFolder: (String) -> Unit,
+    onMoveSelectedNoteToFolder: (String) -> Unit,
     onUpdateTitle: (String) -> Unit,
     onUpdateContent: (String) -> Unit,
     onSearch: (String) -> Unit,
@@ -133,6 +140,7 @@ fun MainScreen(
             Toolbar(
                 darkMode = darkMode,
                 selectedNote = selectedNote,
+                folders = state.folders,
                 editorFontSizeSp = editorFontSizeSp,
                 selectedFontName = selectedFontName,
                 availableFontNames = availableFontNames,
@@ -142,6 +150,7 @@ fun MainScreen(
                 onToggleDarkMode = onToggleDarkMode,
                 onCreateNote = onCreateNote,
                 onImportTextFile = onImportTextFile,
+                onMoveSelectedNoteToFolder = onMoveSelectedNoteToFolder,
                 onTogglePinned = onTogglePinned,
                 onOpenStickyNote = onOpenStickyNote,
                 onRequestDelete = onRequestDelete
@@ -150,6 +159,11 @@ fun MainScreen(
             Row(Modifier.weight(1f)) {
                 FolderPane(
                     notesCount = state.notes.size,
+                    folders = state.folders,
+                    notes = state.notes,
+                    selectedFolderId = state.selectedFolderId,
+                    onSelectFolder = onSelectFolder,
+                    onCreateFolder = onCreateFolder,
                     modifier = Modifier
                         .width(220.dp)
                         .fillMaxHeight()
@@ -218,6 +232,7 @@ fun MainScreen(
 private fun Toolbar(
     darkMode: Boolean,
     selectedNote: Note?,
+    folders: List<NoteFolder>,
     editorFontSizeSp: Int,
     selectedFontName: String,
     availableFontNames: List<String>,
@@ -227,11 +242,13 @@ private fun Toolbar(
     onToggleDarkMode: () -> Unit,
     onCreateNote: () -> Unit,
     onImportTextFile: () -> Unit,
+    onMoveSelectedNoteToFolder: (String) -> Unit,
     onTogglePinned: (String) -> Unit,
     onOpenStickyNote: (String) -> Unit,
     onRequestDelete: (Note) -> Unit
 ) {
     var fontMenuExpanded by remember { mutableStateOf(false) }
+    var folderMenuExpanded by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -281,6 +298,27 @@ private fun Toolbar(
             enabled = selectedNote != null,
             onClick = { selectedNote?.let { onOpenStickyNote(it.id) } }
         )
+        Box {
+            ToolbarButton(
+                text = "이동",
+                enabled = selectedNote != null,
+                onClick = { folderMenuExpanded = true }
+            )
+            DropdownMenu(
+                expanded = folderMenuExpanded,
+                onDismissRequest = { folderMenuExpanded = false }
+            ) {
+                folders.forEach { folder ->
+                    DropdownMenuItem(
+                        text = { Text(folder.name, fontSize = 13.sp) },
+                        onClick = {
+                            onMoveSelectedNoteToFolder(folder.id)
+                            folderMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
         ToolbarButton(
             text = if (selectedNote?.pinned == true) "고정 해제" else "고정",
             enabled = selectedNote != null,
@@ -316,40 +354,108 @@ private fun ToolbarButton(
 @Composable
 private fun FolderPane(
     notesCount: Int,
+    folders: List<NoteFolder>,
+    notes: List<Note>,
+    selectedFolderId: String?,
+    onSelectFolder: (String?) -> Unit,
+    onCreateFolder: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var newFolderName by remember { mutableStateOf("") }
+    val countsByFolder = remember(notes) {
+        notes.groupingBy { it.folderId }.eachCount()
+    }
+
     Column(
         modifier = modifier.padding(16.dp)
     ) {
         Spacer(Modifier.height(4.dp))
+        FolderRow(
+            name = "전체 메모",
+            count = notesCount,
+            selected = selectedFolderId == null,
+            onClick = { onSelectFolder(null) }
+        )
+        Spacer(Modifier.height(8.dp))
+        folders.forEach { folder ->
+            FolderRow(
+                name = folder.name,
+                count = countsByFolder[folder.id] ?: 0,
+                selected = selectedFolderId == folder.id,
+                onClick = { onSelectFolder(folder.id) }
+            )
+        }
+        Spacer(Modifier.height(12.dp))
         Surface(
-            color = AppleYellow.copy(alpha = 0.22f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "메모",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = notesCount.toString(),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            BasicTextField(
+                value = newFolderName,
+                onValueChange = { newFolderName = it },
+                singleLine = true,
+                textStyle = TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.sp
+                ),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                decorationBox = { innerTextField ->
+                    if (newFolderName.isBlank()) {
+                        Text(
+                            text = "새 폴더",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp
+                        )
+                    }
+                    innerTextField()
+                }
+            )
         }
-        Text(
-            text = "로컬 파일에 저장됨",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 14.dp)
-        )
+        TextButton(
+            onClick = {
+                onCreateFolder(newFolderName)
+                newFolderName = ""
+            },
+            enabled = newFolderName.isNotBlank()
+        ) {
+            Text("추가", fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun FolderRow(
+    name: String,
+    count: Int,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (selected) AppleYellow.copy(alpha = 0.22f) else Color.Transparent,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = count.toString(),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

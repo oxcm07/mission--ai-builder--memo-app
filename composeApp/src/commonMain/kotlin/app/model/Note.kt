@@ -10,7 +10,8 @@ data class Note(
     val createdAt: String,
     val updatedAt: String,
     val pinned: Boolean = false,
-    val encodingName: String = "UTF-8"
+    val encodingName: String = "UTF-8",
+    val folderId: String = DEFAULT_FOLDER_ID
 ) {
     val displayTitle: String
         get() = title.trim()

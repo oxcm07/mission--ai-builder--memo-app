@@ -73,6 +73,9 @@ fun App(
                 pickTextFile()?.let(viewModel::importTextFile)
             },
             onSelectNote = viewModel::selectNote,
+            onSelectFolder = viewModel::selectFolder,
+            onCreateFolder = viewModel::createFolder,
+            onMoveSelectedNoteToFolder = viewModel::moveSelectedNoteToFolder,
             onUpdateTitle = viewModel::updateSelectedNoteTitle,
             onUpdateContent = viewModel::updateSelectedNoteContent,
             onSearch = viewModel::updateSearchQuery,
