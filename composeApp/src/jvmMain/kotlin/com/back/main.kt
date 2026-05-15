@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -320,7 +321,8 @@ private fun WindowsTitleBar(
             Text(
                 text = title,
                 color = foreground,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 14.dp)
             )
         }
         WindowButton(type = WindowButtonType.Minimize, foreground = foreground, hover = buttonHover, onClick = onMinimize)
