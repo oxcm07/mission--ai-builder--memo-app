@@ -2,10 +2,9 @@ package app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ContextMenuArea
-import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
@@ -30,6 +30,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,7 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
@@ -57,6 +60,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import app.model.DEFAULT_FOLDER_ID
 import app.model.Note
@@ -65,6 +69,7 @@ import app.state.NotesState
 import app.state.selectedNote
 import app.state.visibleNotes
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val AppleYellow = Color(0xFFFFCC00)
 private val SeparatorLight = Color(0xFFD8D8DE)
@@ -97,6 +102,7 @@ fun MainScreen(
     onCancelDeleteFolder: () -> Unit,
     onMoveNoteToFolder: (String, String) -> Unit,
     onMoveNoteInVisibleList: (String, Int) -> Unit,
+    onMoveFolderInList: (String, Int) -> Unit,
     onUpdateTitle: (String) -> Unit,
     onUpdateContent: (String) -> Unit,
     onSearch: (String) -> Unit,
@@ -119,6 +125,9 @@ fun MainScreen(
     var folderPaneWidth by remember { mutableStateOf(220.dp) }
     var notesPaneWidth by remember { mutableStateOf(320.dp) }
     var folderBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
+    var rootBounds by remember { mutableStateOf(Rect.Zero) }
+    var draggedNote by remember { mutableStateOf<Note?>(null) }
+    var draggedNotePosition by remember { mutableStateOf<Offset?>(null) }
 
     LaunchedEffect(Unit) {
         appFocusRequester.requestFocus()
@@ -159,6 +168,11 @@ fun MainScreen(
                 }
             }
     ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .onGloballyPositioned { rootBounds = it.boundsInWindow() }
+        ) {
         Column(Modifier.fillMaxSize()) {
             Toolbar(
                 darkMode = darkMode,
@@ -189,6 +203,7 @@ fun MainScreen(
                     selectedFolderId = state.selectedFolderId,
                     onSelectFolder = onSelectFolder,
                     onCreateFolder = onCreateFolder,
+                    onMoveFolder = onMoveFolderInList,
                     onFolderBoundsChanged = { folderId, bounds ->
                         folderBounds = folderBounds + (folderId to bounds)
                     },
@@ -211,19 +226,27 @@ fun MainScreen(
                     onSelectNote = onSelectNote,
                     onTogglePinned = onTogglePinned,
                     onMoveNote = onMoveNoteInVisibleList,
+                    onNoteDragStart = { noteId ->
+                        draggedNote = state.notes.firstOrNull { it.id == noteId }
+                    },
+                    onNoteDrag = { _, position ->
+                        draggedNotePosition = position
+                    },
                     onNoteDragEnd = { noteId, windowPosition, totalDragY ->
                         val targetFolderId = windowPosition?.let { position ->
                             folderBounds.entries.firstOrNull { (_, bounds) -> bounds.contains(position) }?.key
                         }
-                        val draggedNote = state.notes.firstOrNull { it.id == noteId }
+                        val noteBeingDragged = state.notes.firstOrNull { it.id == noteId }
                         when {
-                            targetFolderId != null && draggedNote?.folderId != targetFolderId -> {
+                            targetFolderId != null && noteBeingDragged?.folderId != targetFolderId -> {
                                 onMoveNoteToFolder(noteId, targetFolderId)
                             }
                             abs(totalDragY) > 36f -> {
                                 onMoveNoteInVisibleList(noteId, if (totalDragY < 0f) -1 else 1)
                             }
                         }
+                        draggedNotePosition = null
+                        draggedNote = null
                     },
                     modifier = Modifier
                         .width(notesPaneWidth)
@@ -267,6 +290,20 @@ fun MainScreen(
                 darkMode = darkMode
             )
         }
+            val previewNote = draggedNote
+            val previewPosition = draggedNotePosition
+            if (previewNote != null && previewPosition != null) {
+                DraggedNotePreview(
+                    note = previewNote,
+                    modifier = Modifier.offset {
+                        IntOffset(
+                            x = (previewPosition.x - rootBounds.left + 12f).roundToInt(),
+                            y = (previewPosition.y - rootBounds.top + 12f).roundToInt()
+                        )
+                    }
+                )
+            }
+        }
     }
 
     state.pendingDeleteNote?.let { note ->
@@ -303,6 +340,41 @@ private fun PaneResizeHandle(
                 }
             }
     )
+}
+
+@Composable
+private fun DraggedNotePreview(
+    note: Note,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = AppleYellow.copy(alpha = 0.92f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
+        shadowElevation = 10.dp,
+        modifier = modifier
+            .width(260.dp)
+            .graphicsLayer(alpha = 0.72f)
+    ) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 9.dp)) {
+            Text(
+                text = note.displayTitle,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (note.previewText.isNotBlank()) {
+                Text(
+                    text = note.previewText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -432,6 +504,7 @@ private fun FolderPane(
     selectedFolderId: String?,
     onSelectFolder: (String?) -> Unit,
     onCreateFolder: (String) -> Unit,
+    onMoveFolder: (String, Int) -> Unit,
     onFolderBoundsChanged: (String, Rect) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -458,7 +531,12 @@ private fun FolderPane(
                 count = countsByFolder[folder.id] ?: 0,
                 selected = selectedFolderId == folder.id,
                 onBoundsChanged = { onFolderBoundsChanged(folder.id, it) },
-                onClick = { onSelectFolder(folder.id) }
+                onClick = { onSelectFolder(folder.id) },
+                onDragEnd = { totalDragY ->
+                    if (abs(totalDragY) > 24f) {
+                        onMoveFolder(folder.id, if (totalDragY < 0f) -1 else 1)
+                    }
+                }
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -475,6 +553,7 @@ private fun FolderPane(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.sp
                 ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                 decorationBox = { innerTextField ->
                     if (newFolderName.isBlank()) {
@@ -506,8 +585,11 @@ private fun FolderRow(
     count: Int,
     selected: Boolean,
     onBoundsChanged: (Rect) -> Unit = {},
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDragEnd: (Float) -> Unit = {}
 ) {
+    var totalDragY by remember { mutableFloatStateOf(0f) }
+
     Surface(
         color = if (selected) AppleYellow.copy(alpha = 0.22f) else Color.Transparent,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
@@ -515,6 +597,19 @@ private fun FolderRow(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .onGloballyPositioned { onBoundsChanged(it.boundsInWindow()) }
+            .pointerInput(name) {
+                detectDragGestures(
+                    onDragStart = { totalDragY = 0f },
+                    onDragEnd = {
+                        onDragEnd(totalDragY)
+                        totalDragY = 0f
+                    },
+                    onDragCancel = { totalDragY = 0f }
+                ) { change, dragAmount ->
+                    change.consume()
+                    totalDragY += dragAmount.y
+                }
+            }
             .clickable(onClick = onClick)
     ) {
         Row(

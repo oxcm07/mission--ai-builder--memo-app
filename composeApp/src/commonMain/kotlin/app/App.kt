@@ -84,6 +84,7 @@ fun App(
             onCancelDeleteFolder = viewModel::cancelDeleteFolder,
             onMoveNoteToFolder = viewModel::moveNoteToFolder,
             onMoveNoteInVisibleList = viewModel::moveNoteInVisibleList,
+            onMoveFolderInList = viewModel::moveFolderInList,
             onUpdateTitle = viewModel::updateSelectedNoteTitle,
             onUpdateContent = viewModel::updateSelectedNoteContent,
             onSearch = viewModel::updateSearchQuery,

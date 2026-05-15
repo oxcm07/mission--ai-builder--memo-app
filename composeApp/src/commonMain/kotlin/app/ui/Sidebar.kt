@@ -1,7 +1,5 @@
 package app.ui
 
-import androidx.compose.foundation.ContextMenuArea
-import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -17,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +31,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -55,6 +58,8 @@ fun Sidebar(
     onSelectNote: (String) -> Unit,
     onTogglePinned: (String) -> Unit,
     onMoveNote: (String, Int) -> Unit,
+    onNoteDragStart: (String) -> Unit,
+    onNoteDrag: (String, Offset?) -> Unit,
     onNoteDragEnd: (String, Offset?, Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -98,6 +103,8 @@ fun Sidebar(
                             onClick = { onSelectNote(note.id) },
                             onTogglePinned = { onTogglePinned(note.id) },
                             onMoveNote = { direction -> onMoveNote(note.id, direction) },
+                            onDragStart = { onNoteDragStart(note.id) },
+                            onDrag = { position -> onNoteDrag(note.id, position) },
                             onDragEnd = { position, totalDragY -> onNoteDragEnd(note.id, position, totalDragY) }
                         )
                     }
@@ -111,6 +118,8 @@ fun Sidebar(
                             onClick = { onSelectNote(note.id) },
                             onTogglePinned = { onTogglePinned(note.id) },
                             onMoveNote = { direction -> onMoveNote(note.id, direction) },
+                            onDragStart = { onNoteDragStart(note.id) },
+                            onDrag = { position -> onNoteDrag(note.id, position) },
                             onDragEnd = { position, totalDragY -> onNoteDragEnd(note.id, position, totalDragY) }
                         )
                     }
@@ -152,6 +161,7 @@ private fun SearchField(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp
                 ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
@@ -178,6 +188,8 @@ private fun NoteListItem(
     onClick: () -> Unit,
     onTogglePinned: () -> Unit,
     onMoveNote: (Int) -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Offset?) -> Unit,
     onDragEnd: (Offset?, Float) -> Unit
 ) {
     val background = if (selected) {
@@ -189,22 +201,9 @@ private fun NoteListItem(
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var lastDragWindowPosition by remember { mutableStateOf<Offset?>(null) }
     var totalDragY by remember { mutableFloatStateOf(0f) }
+    var contextMenuExpanded by remember { mutableStateOf(false) }
 
-    ContextMenuArea(
-        items = {
-            listOf(
-                ContextMenuItem(if (note.pinned) "고정 해제" else "고정") {
-                    onTogglePinned()
-                },
-                ContextMenuItem("위로 이동") {
-                    onMoveNote(-1)
-                },
-                ContextMenuItem("아래로 이동") {
-                    onMoveNote(1)
-                }
-            )
-        }
-    ) {
+    Box {
         Surface(
             color = background,
             shape = RoundedCornerShape(9.dp),
@@ -212,18 +211,33 @@ private fun NoteListItem(
                 .fillMaxWidth()
                 .padding(vertical = 2.dp)
                 .onGloballyPositioned { coordinates = it }
+                .pointerInput(note.id, note.pinned) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
+                                event.changes.forEach { it.consume() }
+                                contextMenuExpanded = true
+                            }
+                        }
+                    }
+                }
                 .pointerInput(note.id) {
                     detectDragGestures(
                         onDragStart = {
                             totalDragY = 0f
                             lastDragWindowPosition = coordinates?.boundsInWindow()?.topLeft?.plus(it)
+                            onDragStart()
+                            onDrag(lastDragWindowPosition)
                         },
                         onDragEnd = {
                             onDragEnd(lastDragWindowPosition, totalDragY)
+                            onDrag(null)
                             lastDragWindowPosition = null
                             totalDragY = 0f
                         },
                         onDragCancel = {
+                            onDrag(null)
                             lastDragWindowPosition = null
                             totalDragY = 0f
                         }
@@ -231,6 +245,7 @@ private fun NoteListItem(
                         change.consume()
                         totalDragY += dragAmount.y
                         lastDragWindowPosition = coordinates?.boundsInWindow()?.topLeft?.plus(change.position)
+                        onDrag(lastDragWindowPosition)
                     }
                 }
                 .clickable(onClick = onClick)
@@ -273,6 +288,32 @@ private fun NoteListItem(
                     }
                 }
             }
+        }
+        DropdownMenu(
+            expanded = contextMenuExpanded,
+            onDismissRequest = { contextMenuExpanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (note.pinned) "고정 해제" else "고정") },
+                onClick = {
+                    onTogglePinned()
+                    contextMenuExpanded = false
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("위로 이동") },
+                onClick = {
+                    onMoveNote(-1)
+                    contextMenuExpanded = false
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("아래로 이동") },
+                onClick = {
+                    onMoveNote(1)
+                    contextMenuExpanded = false
+                }
+            )
         }
     }
 }

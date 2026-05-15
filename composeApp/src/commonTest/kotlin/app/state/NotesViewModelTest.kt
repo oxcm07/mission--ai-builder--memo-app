@@ -229,6 +229,26 @@ class NotesViewModelTest {
     }
 
     @Test
+    fun moveFolderInListUpdatesFolderOrder() = runTest {
+        val first = NoteFolder("folder-first", "First", "2026-05-15T00:00:00Z", sortOrder = 1)
+        val second = NoteFolder("folder-second", "Second", "2026-05-15T00:00:00Z", sortOrder = 2)
+        val repository = MemoryNotesRepository(loadFoldersResult = listOf(first, second))
+        val viewModel = NotesViewModel(
+            repository = repository,
+            scope = this,
+            autoSaveDelayMillis = 0
+        )
+
+        viewModel.loadNotes()
+        advanceUntilIdle()
+        viewModel.moveFolderInList("folder-second", -1)
+        advanceUntilIdle()
+
+        assertEquals(listOf(DEFAULT_FOLDER_ID, "folder-second", "folder-first"), viewModel.state.value.folders.map { it.id })
+        assertEquals(viewModel.state.value.folders, repository.savedFolders)
+    }
+
+    @Test
     fun confirmDeleteRemovesPendingNote() = runTest {
         val first = note(id = "first", updatedAt = "2026-05-15T12:00:00Z")
         val second = note(id = "second", updatedAt = "2026-05-15T13:00:00Z")

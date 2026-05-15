@@ -35,7 +35,7 @@ class NotesViewModel(
                         if (note.folderId.isBlank()) note.copy(folderId = DEFAULT_FOLDER_ID) else note
                     }
                 )
-                val folders = normalizeFolders(repository.loadFolders(), loaded)
+                val folders = sortFolders(normalizeFolders(repository.loadFolders(), loaded))
                 mutableState.update {
                     it.copy(
                         notes = loaded,
@@ -131,7 +131,8 @@ class NotesViewModel(
         val folder = NoteFolder(
             id = idProvider(),
             name = uniqueFolderName(trimmedName, mutableState.value.folders),
-            createdAt = now
+            createdAt = now,
+            sortOrder = nextFolderSortOrder(mutableState.value.folders)
         )
         mutableState.update {
             it.copy(
@@ -302,6 +303,32 @@ class NotesViewModel(
         saveDebounced()
     }
 
+    fun moveFolderInList(folderId: String, direction: Int) {
+        if (direction == 0 || folderId == DEFAULT_FOLDER_ID) return
+
+        mutableState.update { state ->
+            val folders = sortFolders(state.folders)
+            val index = folders.indexOfFirst { it.id == folderId }
+            if (index == -1) return@update state
+            val targetIndex = (index + direction).coerceIn(1, folders.lastIndex)
+            if (index == targetIndex) return@update state
+
+            val reordered = folders.toMutableList().apply {
+                add(targetIndex, removeAt(index))
+            }
+            val orderById = reordered.mapIndexed { order, folder -> folder.id to order.toLong() }.toMap()
+            state.copy(
+                folders = sortFolders(
+                    state.folders.map { folder ->
+                        orderById[folder.id]?.let { folder.copy(sortOrder = it) } ?: folder
+                    }
+                ),
+                saveError = null
+            )
+        }
+        saveFoldersNow()
+    }
+
     fun saveNow() {
         debouncer.cancel()
         scope.launch {
@@ -382,8 +409,14 @@ private fun normalizeFolders(folders: List<NoteFolder>, notes: List<Note>): List
             )
         }
 
-    return foldersById.values.toList()
+    return sortFolders(foldersById.values.toList())
 }
+
+private fun sortFolders(folders: List<NoteFolder>): List<NoteFolder> =
+    folders.sortedWith(
+        compareBy<NoteFolder> { if (it.id == DEFAULT_FOLDER_ID) Long.MIN_VALUE else it.sortOrder }
+            .thenBy { it.createdAt }
+    )
 
 private fun uniqueFolderName(name: String, folders: List<NoteFolder>): String {
     val existingNames = folders.map { it.name }.toSet()
@@ -401,6 +434,9 @@ private fun nextSortOrder(folderId: String, notes: List<Note>): Long =
         .minOfOrNull { it.sortOrder }
         ?.minus(1)
         ?: 0
+
+private fun nextFolderSortOrder(folders: List<NoteFolder>): Long =
+    folders.maxOfOrNull { it.sortOrder }?.plus(1) ?: 1
 
 private fun Exception.userMessage(): String =
     message?.takeIf { it.isNotBlank() } ?: this::class.simpleName.orEmpty().ifBlank { "알 수 없는 오류" }

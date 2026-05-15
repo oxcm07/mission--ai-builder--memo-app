@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +58,7 @@ fun StickyNoteWindow(
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold
             ),
+            cursorBrush = SolidColor(textColor),
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxWidth()) {
                     if (note.title.isBlank()) {
@@ -85,6 +87,7 @@ fun StickyNoteWindow(
                 fontFamily = fontFamily,
                 lineHeight = (editorFontSizeSp + 7).sp
             ),
+            cursorBrush = SolidColor(textColor),
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxSize()) {
                     if (note.content.isBlank()) {

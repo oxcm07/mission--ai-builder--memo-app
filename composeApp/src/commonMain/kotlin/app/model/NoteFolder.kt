@@ -8,7 +8,8 @@ const val DEFAULT_FOLDER_ID = "default"
 data class NoteFolder(
     val id: String,
     val name: String,
-    val createdAt: String
+    val createdAt: String,
+    val sortOrder: Long = 0
 )
 
 fun defaultNoteFolder(): NoteFolder =
