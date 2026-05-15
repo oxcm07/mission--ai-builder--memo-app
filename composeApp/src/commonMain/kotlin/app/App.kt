@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import app.repository.NotesRepository
 import app.state.NotesViewModel
 import app.ui.MainScreen
@@ -27,7 +28,23 @@ fun App(repository: NotesRepository) {
     }
 
     MaterialTheme(
-        colorScheme = if (darkMode) darkColorScheme() else lightColorScheme()
+        colorScheme = if (darkMode) {
+            darkColorScheme(
+                primary = Color(0xFFFFC400),
+                secondary = Color(0xFFFFD84D),
+                surface = Color(0xFF1C1C1E),
+                surfaceVariant = Color(0xFF2C2C2E),
+                background = Color(0xFF1C1C1E)
+            )
+        } else {
+            lightColorScheme(
+                primary = Color(0xFFFFC400),
+                secondary = Color(0xFFD9A900),
+                surface = Color.White,
+                surfaceVariant = Color(0xFFF2F2F7),
+                background = Color(0xFFF2F2F7)
+            )
+        }
     ) {
         MainScreen(
             state = state,

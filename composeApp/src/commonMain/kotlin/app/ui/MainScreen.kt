@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -33,12 +34,20 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.model.Note
 import app.state.NotesState
 import app.state.selectedNote
 import app.state.visibleNotes
+
+private val AppleYellow = Color(0xFFFFCC00)
+private val SeparatorLight = Color(0xFFD8D8DE)
+private val SidebarLight = Color(0xFFF2F2F7)
+private val ListLight = Color(0xFFF7F7FA)
+private val SidebarDark = Color(0xFF242426)
+private val ListDark = Color(0xFF1F1F21)
 
 @Composable
 fun MainScreen(
@@ -58,14 +67,18 @@ fun MainScreen(
 ) {
     val visibleNotes = state.visibleNotes()
     val selectedNote = state.selectedNote
+    val visibleIds = remember(visibleNotes) { visibleNotes.map { it.id }.toSet() }
     val searchFocusRequester = remember { FocusRequester() }
     val appFocusRequester = remember { FocusRequester() }
+    val sidebarColor = if (darkMode) SidebarDark else SidebarLight
+    val listColor = if (darkMode) ListDark else ListLight
 
     LaunchedEffect(Unit) {
         appFocusRequester.requestFocus()
     }
 
     Surface(
+        color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxSize()
             .focusRequester(appFocusRequester)
@@ -102,12 +115,22 @@ fun MainScreen(
         Column(Modifier.fillMaxSize()) {
             TopBar(
                 darkMode = darkMode,
+                selectedNote = selectedNote,
                 onToggleDarkMode = onToggleDarkMode,
-                onCreateNote = onCreateNote
+                onCreateNote = onCreateNote,
+                onTogglePinned = onTogglePinned,
+                onRequestDelete = onRequestDelete
             )
-            HorizontalDivider()
 
             Row(Modifier.weight(1f)) {
+                FolderPane(
+                    notesCount = state.notes.size,
+                    modifier = Modifier
+                        .width(220.dp)
+                        .fillMaxHeight()
+                        .background(sidebarColor)
+                )
+                VerticalDivider(color = separatorColor(darkMode))
                 Sidebar(
                     notes = visibleNotes,
                     allNotesCount = state.notes.size,
@@ -117,16 +140,18 @@ fun MainScreen(
                     onSearch = onSearch,
                     onSelectNote = onSelectNote,
                     modifier = Modifier
-                        .width(300.dp)
+                        .width(320.dp)
                         .fillMaxHeight()
+                        .background(listColor)
                 )
+                VerticalDivider(color = separatorColor(darkMode))
 
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
                 ) {
-                    if (selectedNote == null || selectedNote.id !in visibleNotes.map { it.id }) {
+                    if (selectedNote == null || selectedNote.id !in visibleIds) {
                         EmptyState(
                             hasNotes = state.notes.isNotEmpty(),
                             searchQuery = state.searchQuery
@@ -135,9 +160,7 @@ fun MainScreen(
                         EditorPane(
                             note = selectedNote,
                             onTitleChange = onUpdateTitle,
-                            onContentChange = onUpdateContent,
-                            onTogglePinned = onTogglePinned,
-                            onDelete = onRequestDelete
+                            onContentChange = onUpdateContent
                         )
                     }
                 }
@@ -147,7 +170,8 @@ fun MainScreen(
                 notesCount = state.notes.size,
                 selectedCharCount = selectedNote?.content?.length ?: 0,
                 isSaving = state.isSaving,
-                saveError = state.saveError
+                saveError = state.saveError,
+                darkMode = darkMode
             )
         }
     }
@@ -164,29 +188,103 @@ fun MainScreen(
 @Composable
 private fun TopBar(
     darkMode: Boolean,
+    selectedNote: Note?,
     onToggleDarkMode: () -> Unit,
-    onCreateNote: () -> Unit
+    onCreateNote: () -> Unit,
+    onTogglePinned: (String) -> Unit,
+    onRequestDelete: (Note) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .padding(horizontal = 16.dp),
+            .height(52.dp)
+            .background(if (darkMode) SidebarDark else SidebarLight)
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "Memo",
-            fontSize = 20.sp,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.weight(1f))
-        OutlinedButton(onClick = onToggleDarkMode) {
-            Text(if (darkMode) "Light" else "Dark")
+        ToolbarButton(text = "새 메모", onClick = onCreateNote)
+        ToolbarButton(
+            text = if (selectedNote?.pinned == true) "고정 해제" else "고정",
+            enabled = selectedNote != null,
+            onClick = { selectedNote?.let { onTogglePinned(it.id) } }
+        )
+        ToolbarButton(
+            text = "삭제",
+            enabled = selectedNote != null,
+            onClick = { selectedNote?.let(onRequestDelete) }
+        )
+        ToolbarButton(
+            text = if (darkMode) "라이트" else "다크",
+            onClick = onToggleDarkMode
+        )
+    }
+}
+
+@Composable
+private fun ToolbarButton(
+    text: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        colors = ButtonDefaults.textButtonColors(contentColor = AppleYellow)
+    ) {
+        Text(text, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun FolderPane(
+    notesCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(16.dp)
+    ) {
+        Text(
+            text = "iCloud",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Surface(
+            color = AppleYellow.copy(alpha = 0.22f),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "메모",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = notesCount.toString(),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
-        Spacer(Modifier.width(8.dp))
-        Button(onClick = onCreateNote) {
-            Text("+ New")
-        }
+        Text(
+            text = "로컬 파일에 저장됨",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 14.dp)
+        )
     }
 }
 
@@ -195,13 +293,14 @@ private fun StatusBar(
     notesCount: Int,
     selectedCharCount: Int,
     isSaving: Boolean,
-    saveError: String?
+    saveError: String?,
+    darkMode: Boolean
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(36.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .height(32.dp)
+            .background(if (darkMode) SidebarDark else SidebarLight)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -209,12 +308,12 @@ private fun StatusBar(
             text = "$notesCount notes",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
-            modifier = Modifier.width(284.dp)
+            modifier = Modifier.width(526.dp)
         )
         val status = when {
             isSaving -> "저장 중..."
             saveError != null -> saveError
-            else -> "Saved"
+            else -> "저장됨"
         }
         Text(
             text = "$status · $selectedCharCount chars",
@@ -227,3 +326,6 @@ private fun StatusBar(
         )
     }
 }
+
+private fun separatorColor(darkMode: Boolean): Color =
+    if (darkMode) Color(0xFF3A3A3C) else SeparatorLight

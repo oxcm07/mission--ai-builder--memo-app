@@ -68,6 +68,18 @@ class NotesViewModelTest {
     }
 
     @Test
+    fun blankTitleUsesFirstContentLineForDisplayTitle() {
+        val note = note(
+            id = "note-1",
+            title = "",
+            content = "Shopping list\nMilk\nBread"
+        )
+
+        assertEquals("Shopping list", note.displayTitle)
+        assertEquals("Milk", note.previewText)
+    }
+
+    @Test
     fun pinnedNotesSortBeforeRecentlyUpdatedNotes() {
         val pinnedOld = note(id = "pinned", updatedAt = "2026-05-14T00:00:00Z", pinned = true)
         val recent = note(id = "recent", updatedAt = "2026-05-15T00:00:00Z")

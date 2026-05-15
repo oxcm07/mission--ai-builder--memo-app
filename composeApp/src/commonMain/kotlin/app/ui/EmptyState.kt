@@ -18,7 +18,7 @@ fun EmptyState(
 ) {
     val message = when {
         hasNotes && searchQuery.isNotBlank() -> "검색 결과가 없습니다"
-        else -> "새 메모를 만들어 시작하세요"
+        else -> "새 메모를 작성하세요"
     }
 
     Column(
